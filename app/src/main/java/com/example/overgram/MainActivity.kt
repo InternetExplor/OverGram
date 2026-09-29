@@ -24,6 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.transitions.SlideTransition
+import com.example.overgram.domain.usecase.HasSessionUseCase
+import com.example.overgram.presentation.auth.PhoneEntryScreen
+import com.example.overgram.presentation.chatlist.ChatListScreen
 import com.example.overgram.ui.components.ChatListItem
 import com.example.overgram.ui.components.OverGramBottomBar
 import com.example.overgram.ui.components.OverGramTopBar
@@ -31,14 +36,24 @@ import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
 import com.example.overgram.ui.theme.TextPrimary
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var hasSession: HasSessionUseCase
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val startScreen = if (hasSession()) ChatListScreen else PhoneEntryScreen
         setContent {
             OverGramTheme {
-                MainScreenContent()
+                Navigator(startScreen) { navigator ->
+                    SlideTransition(navigator)
+                }
             }
         }
     }

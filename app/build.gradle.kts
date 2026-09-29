@@ -20,6 +20,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "API_BASE_URL", "\"https://relay.zokirov-mob-dev.uz/\"")
     }
 
     buildTypes {
@@ -35,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -61,6 +64,7 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.60")
     ksp("com.google.dagger:hilt-android-compiler:2.60")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
     // Voyager (навигация)
     implementation("cafe.adriel.voyager:voyager-navigator:1.1.0-beta03")
