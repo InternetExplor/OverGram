@@ -3,7 +3,7 @@
 
     <!-- Auth: phone entry -->
     <string name="auth_phone_title">Your phone number</string>
-    <string name="auth_phone_subtitle">We\'ll send you a 5-digit code to confirm it.</string>
+    <string name="auth_phone_subtitle">We\'ll send you a code to confirm it.</string>
     <string name="auth_phone_placeholder">90 123 45 67</string>
     <string name="auth_get_code">Get code</string>
     <string name="auth_get_code_countdown">Get code in %1$ds</string>

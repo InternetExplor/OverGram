@@ -41,16 +41,13 @@ data class AuthUiState(
     val isTestNumber: Boolean
         get() = isPhoneValid && phoneDigits.startsWith(TEST_NUMBER_PREFIX)
 
-    /** Test numbers use the fixed 5-digit code; codes delivered via Telegram have 6 digits. */
     val otpLength: Int
-        get() = if (isTestNumber) TEST_OTP_LENGTH else OTP_LENGTH
+        get() = OTP_LENGTH
 
     companion object {
         const val COUNTRY_PREFIX = "+998"
         const val PHONE_LOCAL_LENGTH = 9
         const val OTP_LENGTH = 6
-        const val TEST_OTP_LENGTH = 5
-
         const val TEST_NUMBER_PREFIX = "900000"
         const val TEST_PHONE_DIGITS = "900000001"
         const val TEST_OTP_CODE = "11111"

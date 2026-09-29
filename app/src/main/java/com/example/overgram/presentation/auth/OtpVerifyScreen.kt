@@ -188,6 +188,18 @@ private fun OtpEnteringPreview() {
     }
 }
 
+@Preview(name = "OTP – real number, 6 digits", showBackground = true, widthDp = 360)
+@Composable
+private fun OtpSixDigitPreview() {
+    OverGramTheme {
+        OtpVerifyContent(
+            state = previewState.copy(phoneDigits = "901234567", cooldownPhoneDigits = "901234567", code = "4821"),
+            onCodeChange = {}, onVerify = {}, onResend = {}, onBack = {}, onFillTestCode = {},
+            showDebugHints = false, autoFocus = false
+        )
+    }
+}
+
 @Preview(name = "OTP – loading", showBackground = true)
 @Composable
 private fun OtpLoadingPreview() {
