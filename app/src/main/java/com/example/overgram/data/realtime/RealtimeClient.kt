@@ -1,5 +1,8 @@
 package com.example.overgram.data.realtime
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.util.Base64
 import com.example.overgram.BuildConfig
 import com.example.overgram.core.di.RealtimeHttpClient
@@ -28,6 +31,7 @@ import com.example.overgram.domain.repository.RealtimeRepository
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -78,6 +82,7 @@ sealed interface SendResult {
  */
 @Singleton
 class RealtimeClient @Inject constructor(
+    @ApplicationContext private val context: Context,
     @RealtimeHttpClient private val httpClient: OkHttpClient,
     private val syncApi: SyncApi,
     private val tokenPreferences: TokenPreferences,
@@ -115,6 +120,19 @@ class RealtimeClient @Inject constructor(
     private val wsUrl = BuildConfig.API_BASE_URL.replaceFirst("http", "ws") + "v1/ws"
 
     init {
+        // Coming back online (airplane mode off, Wi-Fi back): connect now, not after the backoff
+        // that grew while every attempt failed.
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        try {
+            connectivity?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    commands.trySend(Command.NetworkAvailable)
+                }
+            })
+        } catch (e: SecurityException) {
+            Timber.w(e, "Realtime: can't watch connectivity")
+        }
+
         scope.launch {
             for (command in commands) {
                 try {
@@ -178,6 +196,7 @@ class RealtimeClient @Inject constructor(
         /** Reconnect with the freshly rotated access token. */
         data object Rotate : Command
         data object CatchUp : Command
+        data object NetworkAvailable : Command
         data class Opened(val generation: Int) : Command
         data class Text(val generation: Int, val text: String) : Command
         data class Closed(val generation: Int, val code: Int?, val reason: String?) : Command
@@ -199,6 +218,11 @@ class RealtimeClient @Inject constructor(
                 disconnect()
             }
             Command.Reconnect -> if (wanted && socket == null) connect()
+            Command.NetworkAvailable -> if (wanted && socket == null) {
+                reconnectJob?.cancel()
+                attempt = 0
+                connect()
+            }
             Command.Rotate -> if (wanted) {
                 disconnect()
                 connect()
