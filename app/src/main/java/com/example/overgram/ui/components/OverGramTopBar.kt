@@ -1,5 +1,6 @@
 package com.example.overgram.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -38,6 +39,7 @@ import com.example.overgram.ui.theme.TextSecondary
  * @param subtitle Optional subtitle, e.g., "online" status or contact info.
  * @param onBackClick Navigation back click listener. If provided, back button is shown.
  * @param leadContent Optional composable content displayed before title (e.g. Chat Avatar).
+ * @param onTitleClick Makes the title clickable, e.g. to open chat info.
  * @param actions Action icons displayed on the right side of the top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,12 +50,15 @@ fun OverGramTopBar(
     subtitle: String? = null,
     onBackClick: (() -> Unit)? = null,
     leadContent: (@Composable () -> Unit)? = null,
+    onTitleClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
         modifier = modifier,
         title = {
-            Column {
+            Column(
+                modifier = if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,

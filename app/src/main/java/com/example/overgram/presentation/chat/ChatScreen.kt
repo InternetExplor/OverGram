@@ -23,10 +23,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -80,7 +80,7 @@ import com.example.overgram.presentation.chatlist.isSameDay
 import com.example.overgram.presentation.chatlist.joinNames
 import com.example.overgram.presentation.chatlist.presenceText
 import com.example.overgram.presentation.chatlist.systemEventText
-import com.example.overgram.presentation.newchat.SelectMembersScreen
+import com.example.overgram.presentation.groupinfo.GroupInfoScreen
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.BubbleStatus
 import com.example.overgram.ui.components.ChatBubble
@@ -144,7 +144,7 @@ data class ChatScreen(
                 onErrorShown = viewModel::onErrorShown,
                 onToggleMute = viewModel::toggleMute,
                 onRename = viewModel::openRenameDialog,
-                onAddMembers = { navigator.push(SelectMembersScreen(addToChatId = chatId)) },
+                onGroupInfo = { navigator.push(GroupInfoScreen(chatId, state.title)) },
                 onLeave = viewModel::leave
             )
         )
@@ -171,7 +171,7 @@ data class ChatActions(
     val onErrorShown: () -> Unit = {},
     val onToggleMute: () -> Unit = {},
     val onRename: () -> Unit = {},
-    val onAddMembers: () -> Unit = {},
+    val onGroupInfo: () -> Unit = {},
     val onLeave: () -> Unit = {}
 )
 
@@ -237,6 +237,7 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
                 title = state.title,
                 subtitle = chatSubtitle(state),
                 onBackClick = actions.onBack,
+                onTitleClick = if (state.isGroup) actions.onGroupInfo else null,
                 leadContent = {
                     Avatar(
                         name = state.title,
@@ -381,15 +382,16 @@ private fun ChatMenu(state: ChatUiState, actions: ChatActions, onLeave: () -> Un
                 onClick = close(actions.onToggleMute)
             )
             if (state.isGroup) {
+                // Members (list, add, remove) live on the group info screen.
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_group_info)) },
+                    leadingIcon = { Icon(Icons.Default.Group, contentDescription = null) },
+                    onClick = close(actions.onGroupInfo)
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.chat_rename_group)) },
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                     onClick = close(actions.onRename)
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.chat_add_members)) },
-                    leadingIcon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-                    onClick = close(actions.onAddMembers)
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.chat_leave_group), color = ErrorRed) },

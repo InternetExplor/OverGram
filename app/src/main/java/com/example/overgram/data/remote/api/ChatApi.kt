@@ -18,6 +18,7 @@ import com.example.overgram.data.remote.dto.UserPublicDto
 import com.example.overgram.data.remote.dto.UserSearchResultDto
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -78,6 +79,13 @@ interface ChatApi {
         @Path("id") chatId: String,
         @Body body: AddMembersRequestDto
     ): Response<ChatMembersDto>
+
+    /** OWNER/ADMIN can remove any MEMBER. 204 on success. */
+    @DELETE("v1/chats/{id}/members/{userId}")
+    suspend fun removeMember(
+        @Path("id") chatId: String,
+        @Path("userId") userId: String
+    ): Response<Unit>
 
     /** If the OWNER leaves, ownership passes on automatically. */
     @POST("v1/chats/{id}/leave")

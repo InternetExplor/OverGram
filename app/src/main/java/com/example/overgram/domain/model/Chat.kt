@@ -73,6 +73,19 @@ data class UserProfile(
     val lastSeenAt: Long?
 )
 
+/**
+ * A group's current members, rebuilt from its history (Relay has no member-list endpoint).
+ * [isComplete] is false when the history was too long to read back to the group's creation;
+ * the list then only has people seen in the part that was read.
+ */
+data class GroupMembers(
+    val members: List<UserProfile>,
+    /** Member ids whose profile couldn't be loaded. */
+    val unknownMemberIds: List<String>,
+    val ownerId: String?,
+    val isComplete: Boolean
+)
+
 /** A group member as returned when members are added. */
 data class ChatMember(
     val userId: String,

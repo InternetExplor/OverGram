@@ -3,6 +3,7 @@ package com.example.overgram.domain.repository
 import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatMember
 import com.example.overgram.domain.model.ChatSummary
+import com.example.overgram.domain.model.GroupMembers
 import com.example.overgram.domain.model.MessagePage
 import com.example.overgram.domain.model.SentMessage
 import com.example.overgram.domain.model.UserProfile
@@ -37,6 +38,15 @@ interface ChatRepository {
     suspend fun addMembers(chatId: String, userIds: List<String>): AuthOutcome<List<ChatMember>>
 
     suspend fun leaveChat(chatId: String): AuthOutcome<Unit>
+
+    /**
+     * Current members and owner of a group, rebuilt from its SYSTEM messages
+     * (created / added / removed / left / owner changed).
+     */
+    suspend fun getGroupMembers(chatId: String): AuthOutcome<GroupMembers>
+
+    /** OWNER/ADMIN only. */
+    suspend fun removeMember(chatId: String, userId: String): AuthOutcome<Unit>
 
     /** The caller's own mute setting for a chat. */
     suspend fun setMuted(chatId: String, muted: Boolean): AuthOutcome<ChatSummary>

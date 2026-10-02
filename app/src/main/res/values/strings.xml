@@ -105,6 +105,22 @@
     <string name="chat_leave_confirm_title">Leave group?</string>
     <string name="chat_leave_confirm_text">You will stop receiving messages from “%1$s”. Someone will have to add you again to come back.</string>
     <string name="chat_members_more">%1$s and %2$d more</string>
+    <string name="chat_group_info">Group info</string>
+
+    <!-- Group info -->
+    <string name="group_info_title">Group info</string>
+    <plurals name="group_members_count">
+        <item quantity="one">%1$d member</item>
+        <item quantity="other">%1$d members</item>
+    </plurals>
+    <string name="group_online_count">%1$d online</string>
+    <string name="group_member_you">%1$s (you)</string>
+    <string name="group_role_owner">owner</string>
+    <string name="group_remove_member">Remove %1$s</string>
+    <string name="group_remove_title">Remove member?</string>
+    <string name="group_remove_text">%1$s will be removed from “%2$s” and stop receiving its messages.</string>
+    <string name="group_remove_confirm">Remove</string>
+    <string name="group_members_incomplete">This group\'s history is very long, so only members seen in recent messages are listed.</string>
 
     <!-- Group creation / member picker -->
     <string name="new_group">New group</string>

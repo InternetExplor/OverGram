@@ -21,6 +21,7 @@ import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatMember
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.GroupMembers
 import com.example.overgram.domain.model.MemberRole
 import com.example.overgram.domain.model.Message
 import com.example.overgram.domain.model.MessagePage
@@ -109,11 +110,70 @@ class ChatRepositoryImpl @Inject constructor(
     override suspend fun leaveChat(chatId: String): AuthOutcome<Unit> =
         call { api.leaveChat(chatId) }.mapNotNull { }
 
+    override suspend fun removeMember(chatId: String, userId: String): AuthOutcome<Unit> =
+        call { api.removeMember(chatId, userId) }.mapNotNull { }
+
+    override suspend fun getGroupMembers(chatId: String): AuthOutcome<GroupMembers> {
+        // Read history backwards until the group_created event (the very first message).
+        val history = mutableListOf<Message>()
+        var beforeSeq: Long? = null
+        var reachedStart = false
+        for (page in 0 until MEMBER_HISTORY_MAX_PAGES) {
+            val result = when (val outcome = getMessagesPage(chatId, beforeSeq, MAX_MESSAGE_PAGE_SIZE)) {
+                is AuthOutcome.Failure -> return outcome
+                is AuthOutcome.Success -> outcome.value
+            }
+            history += result.messages
+            if (!result.hasMore || result.messages.isEmpty() ||
+                result.messages.any { it.systemEvent?.kind == SystemEventKind.GROUP_CREATED }
+            ) {
+                reachedStart = true
+                break
+            }
+            beforeSeq = result.messages.minOf { it.serverSeq }
+        }
+
+        val members = LinkedHashSet<String>()
+        var ownerId: String? = null
+        history.sortedBy { it.serverSeq }.forEach { message ->
+            val event = message.systemEvent
+            when (event?.kind) {
+                SystemEventKind.GROUP_CREATED -> {
+                    members += event.actorId
+                    members += event.targetUserIds
+                    ownerId = event.actorId
+                }
+                SystemEventKind.MEMBERS_ADDED -> members += event.targetUserIds
+                SystemEventKind.MEMBER_REMOVED -> members -= event.targetUserIds.toSet()
+                SystemEventKind.MEMBER_LEFT -> members -= event.targetUserIds.ifEmpty { listOf(event.actorId) }.toSet()
+                SystemEventKind.OWNER_CHANGED -> event.targetUserIds.firstOrNull()?.let {
+                    ownerId = it
+                    members += it
+                }
+                // Without the start of history, anyone who spoke is (or was) a member.
+                else -> if (!reachedStart && message.type != MessageType.SYSTEM) members += message.senderId
+            }
+        }
+
+        val profiles = loadProfiles(members.toList(), refresh = true)
+        return AuthOutcome.Success(
+            GroupMembers(
+                members = members.mapNotNull(profiles::get),
+                unknownMemberIds = members.filterNot(profiles::containsKey),
+                ownerId = ownerId?.takeIf { it in members },
+                isComplete = reachedStart
+            )
+        )
+    }
+
     override suspend fun setMuted(chatId: String, muted: Boolean): AuthOutcome<ChatSummary> =
         call { api.updateSettings(chatId, ChatSettingsRequestDto(muted)) }.resolveChat()
 
     override suspend fun getMessages(chatId: String, beforeSeq: Long?): AuthOutcome<MessagePage> =
-        call { api.listMessages(chatId, beforeSeq, MESSAGE_PAGE_SIZE) }.mapNotNull { page ->
+        getMessagesPage(chatId, beforeSeq, MESSAGE_PAGE_SIZE)
+
+    private suspend fun getMessagesPage(chatId: String, beforeSeq: Long?, limit: Int): AuthOutcome<MessagePage> =
+        call { api.listMessages(chatId, beforeSeq, limit) }.mapNotNull { page ->
             page ?: return@mapNotNull null
             MessagePage(
                 messages = page.messages.orEmpty().mapNotNull { it.toDomain() },
@@ -315,6 +375,12 @@ class ChatRepositoryImpl @Inject constructor(
         const val MAX_PAGES = 5
         const val PROFILE_CONCURRENCY = 6
         const val MESSAGE_PAGE_SIZE = 50
+
+        /** Server maximum for `GET /v1/chats/{id}/messages`. */
+        const val MAX_MESSAGE_PAGE_SIZE = 100
+
+        /** Member lists read at most this many pages (5000 messages) back. */
+        const val MEMBER_HISTORY_MAX_PAGES = 50
         const val SEARCH_LIMIT = 20
     }
 }
