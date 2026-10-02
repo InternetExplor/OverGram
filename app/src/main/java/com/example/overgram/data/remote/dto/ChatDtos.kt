@@ -31,6 +31,42 @@ data class MessagePreviewDto(
     @SerializedName("deletedAt") val deletedAt: Long?
 )
 
+data class MessagePageDto(
+    @SerializedName("messages") val messages: List<MessageDto>?,
+    @SerializedName("hasMore") val hasMore: Boolean?
+)
+
+data class MessageDto(
+    @SerializedName("clientMessageId") val clientMessageId: String?,
+    @SerializedName("serverId") val serverId: Long?,
+    @SerializedName("chatId") val chatId: String?,
+    @SerializedName("senderId") val senderId: String?,
+    @SerializedName("serverSeq") val serverSeq: Long?,
+    @SerializedName("type") val type: String?,
+    @SerializedName("body") val body: String?,
+    @SerializedName("createdAt") val createdAt: Long?,
+    @SerializedName("editedAt") val editedAt: Long?,
+    @SerializedName("deletedAt") val deletedAt: Long?
+)
+
+data class SendMessageRequestDto(
+    @SerializedName("clientMessageId") val clientMessageId: String,
+    @SerializedName("type") val type: String,
+    @SerializedName("body") val body: String?
+)
+
+data class SendMessageResultDto(
+    @SerializedName("clientMessageId") val clientMessageId: String?,
+    @SerializedName("serverId") val serverId: Long?,
+    @SerializedName("serverSeq") val serverSeq: Long?,
+    @SerializedName("serverCreatedAt") val serverCreatedAt: Long?
+)
+
+/** Body of `POST /v1/chats/{id}/read`. */
+data class SeqCursorDto(
+    @SerializedName("upToSeq") val upToSeq: Long
+)
+
 /** Relay's `UserPublic`: a profile without the phone number. */
 data class UserPublicDto(
     @SerializedName("id") val id: String?,

@@ -64,6 +64,7 @@ import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.presentation.auth.PhoneEntryScreen
+import com.example.overgram.presentation.chat.PrivateChatScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.ChatListItem
@@ -100,7 +101,18 @@ data object ChatListScreen : Screen {
             onRetry = viewModel::retry,
             onErrorShown = viewModel::onErrorShown,
             onLogout = viewModel::logout,
-            onChatClick = { /* Private / group chat screens are next on the board. */ }
+            onChatClick = { chat ->
+                // Group chats get their own screen (separate card on the board).
+                if (chat.type == ChatType.DIRECT) {
+                    navigator.push(
+                        PrivateChatScreen(
+                            chatId = chat.id,
+                            peerUserId = chat.peer?.id,
+                            title = chat.peer?.displayName.orEmpty()
+                        )
+                    )
+                }
+            }
         )
     }
 }

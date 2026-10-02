@@ -4,14 +4,20 @@ import com.example.overgram.data.local.prefs.TokenPreferences
 import com.example.overgram.data.remote.api.ChatApi
 import com.example.overgram.data.remote.dto.ChatDto
 import com.example.overgram.data.remote.dto.ErrorDto
+import com.example.overgram.data.remote.dto.MessageDto
 import com.example.overgram.data.remote.dto.MessagePreviewDto
+import com.example.overgram.data.remote.dto.SendMessageRequestDto
+import com.example.overgram.data.remote.dto.SeqCursorDto
 import com.example.overgram.data.remote.dto.UserPublicDto
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.Message
+import com.example.overgram.domain.model.MessagePage
 import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
+import com.example.overgram.domain.model.SentMessage
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.domain.repository.ChatRepository
 import com.google.gson.Gson
@@ -58,7 +64,48 @@ class ChatRepositoryImpl @Inject constructor(
         return AuthOutcome.Success(chats.mapNotNull { it.toDomain(profiles) })
     }
 
+    override suspend fun getUser(userId: String): AuthOutcome<UserProfile> =
+        call { api.getUser(userId) }.mapNotNull { it?.toDomain() }
+            .also { if (it is AuthOutcome.Success) profileCache[userId] = it.value }
+
+    override suspend fun getMessages(chatId: String, beforeSeq: Long?): AuthOutcome<MessagePage> =
+        call { api.listMessages(chatId, beforeSeq, MESSAGE_PAGE_SIZE) }.mapNotNull { page ->
+            page ?: return@mapNotNull null
+            MessagePage(
+                messages = page.messages.orEmpty().mapNotNull { it.toDomain() },
+                hasMore = page.hasMore ?: false
+            )
+        }
+
+    override suspend fun sendText(
+        chatId: String,
+        clientMessageId: String,
+        text: String
+    ): AuthOutcome<SentMessage> =
+        call {
+            api.sendMessage(chatId, SendMessageRequestDto(clientMessageId, MessageType.TEXT.name, text))
+        }.mapNotNull { result ->
+            SentMessage(
+                serverId = result?.serverId ?: return@mapNotNull null,
+                serverSeq = result.serverSeq ?: return@mapNotNull null,
+                createdAt = result.serverCreatedAt ?: return@mapNotNull null
+            )
+        }
+
+    override suspend fun markRead(chatId: String, upToSeq: Long): AuthOutcome<Unit> =
+        call { api.markRead(chatId, SeqCursorDto(upToSeq)) }.mapNotNull { }
+
     override fun currentUserId(): String? = tokenPreferences.getUserId()
+
+    /** Maps a success value; a null result means the body was malformed. */
+    private inline fun <T, R : Any> AuthOutcome<T>.mapNotNull(transform: (T) -> R?): AuthOutcome<R> =
+        when (this) {
+            is AuthOutcome.Success -> transform(value)?.let { AuthOutcome.Success(it) }
+                ?: AuthOutcome.Failure(AuthError.Unknown("Malformed response")).also {
+                    Timber.e("Malformed chat response")
+                }
+            is AuthOutcome.Failure -> this
+        }
 
     /**
      * Relay has no batch profile endpoint, so peers are fetched one by one (a few at a time
@@ -143,6 +190,20 @@ class ChatRepositoryImpl @Inject constructor(
         )
     }
 
+    private fun MessageDto.toDomain(): Message? {
+        return Message(
+            clientMessageId = clientMessageId ?: return null,
+            serverId = serverId ?: return null,
+            serverSeq = serverSeq ?: return null,
+            senderId = senderId ?: return null,
+            type = MessageType.entries.firstOrNull { it.name == type } ?: MessageType.UNKNOWN,
+            body = body,
+            createdAt = createdAt ?: return null,
+            isEdited = editedAt != null,
+            isDeleted = deletedAt != null
+        )
+    }
+
     private fun UserPublicDto.toDomain(): UserProfile? {
         return UserProfile(
             id = id ?: return null,
@@ -159,5 +220,6 @@ class ChatRepositoryImpl @Inject constructor(
         const val PAGE_SIZE = 100
         const val MAX_PAGES = 5
         const val PROFILE_CONCURRENCY = 6
+        const val MESSAGE_PAGE_SIZE = 50
     }
 }

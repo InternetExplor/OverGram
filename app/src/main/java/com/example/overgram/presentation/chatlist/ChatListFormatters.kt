@@ -81,19 +81,33 @@ fun chatTime(timestamp: Long, now: Long = System.currentTimeMillis()): String {
     }
 }
 
+/** Local wall-clock time, honouring the device's 12/24-hour setting. */
 @Composable
-private fun formatClock(timestamp: Long): String =
+fun formatClock(timestamp: Long): String =
     DateFormat.getTimeFormat(LocalContext.current).format(Date(timestamp))
 
-private fun formatDate(timestamp: Long): String =
-    SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(timestamp))
+/** "Today", "Yesterday", or "2 October" (with the year if it isn't the current one). */
+@Composable
+fun dayLabel(timestamp: Long, now: Long = System.currentTimeMillis()): String = when {
+    isSameDay(timestamp, now) -> stringResource(R.string.day_today)
+    isSameDay(timestamp, now - DAY_MS) -> stringResource(R.string.day_yesterday)
+    else -> {
+        val sameYear = Calendar.getInstance().apply { timeInMillis = timestamp }.get(Calendar.YEAR) ==
+            Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.YEAR)
+        val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), if (sameYear) "dMMMM" else "dMMMMyyyy")
+        SimpleDateFormat(pattern, Locale.getDefault()).format(Date(timestamp))
+    }
+}
 
-private fun isSameDay(a: Long, b: Long): Boolean {
+fun isSameDay(a: Long, b: Long): Boolean {
     val first = Calendar.getInstance().apply { timeInMillis = a }
     val second = Calendar.getInstance().apply { timeInMillis = b }
     return first.get(Calendar.YEAR) == second.get(Calendar.YEAR) &&
         first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR)
 }
+
+private fun formatDate(timestamp: Long): String =
+    SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(timestamp))
 
 private const val DAY_MS = 24 * 60 * 60 * 1000L
 private const val WEEK_MS = 7 * DAY_MS

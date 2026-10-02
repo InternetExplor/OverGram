@@ -57,9 +57,11 @@ class ChatListViewModel @Inject constructor(
     fun startPolling() {
         if (pollingJob?.isActive == true) return
         pollingJob = viewModelScope.launch {
+            // Load right away too: coming back from a chat should update unread counts.
+            // On first start this is a no-op, the initial load is still running.
             while (isActive) {
-                delay(POLL_INTERVAL_MS)
                 load(silent = true)
+                delay(POLL_INTERVAL_MS)
             }
         }
     }
