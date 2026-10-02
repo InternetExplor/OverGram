@@ -1,15 +1,20 @@
 package com.example.overgram.data.remote.api
 
 import com.example.overgram.core.network.AuthInterceptor
+import com.example.overgram.data.remote.dto.ChatDto
 import com.example.overgram.data.remote.dto.ChatListPageDto
+import com.example.overgram.data.remote.dto.DirectChatRequestDto
 import com.example.overgram.data.remote.dto.MessagePageDto
 import com.example.overgram.data.remote.dto.SendMessageRequestDto
 import com.example.overgram.data.remote.dto.SendMessageResultDto
 import com.example.overgram.data.remote.dto.SeqCursorDto
+import com.example.overgram.data.remote.dto.UpdateMeRequestDto
 import com.example.overgram.data.remote.dto.UserPublicDto
+import com.example.overgram.data.remote.dto.UserSearchResultDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -27,6 +32,24 @@ interface ChatApi {
     /** Public profile, including `online` / `lastSeenAt`. */
     @GET("v1/users/{id}")
     suspend fun getUser(@Path("id") userId: String): Response<UserPublicDto>
+
+    /** The caller's own profile (`UserMe`; the extra `phone` field is ignored). */
+    @GET("v1/users/me")
+    suspend fun getMe(): Response<UserPublicDto>
+
+    @PATCH("v1/users/me")
+    suspend fun updateMe(@Body body: UpdateMeRequestDto): Response<UserPublicDto>
+
+    /** Case-insensitive prefix match on username only. */
+    @GET("v1/users/search")
+    suspend fun searchUsers(
+        @Query("q") query: String,
+        @Query("limit") limit: Int
+    ): Response<UserSearchResultDto>
+
+    /** Returns the existing DIRECT chat with this peer (200) or creates one (201). */
+    @POST("v1/chats/direct")
+    suspend fun getOrCreateDirectChat(@Body body: DirectChatRequestDto): Response<ChatDto>
 
     /** Newest first; [beforeSeq] pages backwards (exclusive). */
     @GET("v1/chats/{id}/messages")

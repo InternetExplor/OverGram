@@ -1,6 +1,7 @@
 package com.example.overgram.ui.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -17,9 +18,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.overgram.R
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OnlineStatusViolet
@@ -69,21 +73,24 @@ fun OverGramTopBar(
             }
         },
         navigationIcon = {
-            if (onBackClick != null) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = TextPrimary
-                    )
+            // The slot is a Box: without the Row the avatar is drawn on top of the back arrow.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onBackClick != null) {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                            tint = TextPrimary
+                        )
+                    }
                 }
-            }
-            if (leadContent != null) {
-                if (onBackClick == null) {
-                    Spacer(modifier = Modifier.width(Dimens.SpacingLg))
+                if (leadContent != null) {
+                    if (onBackClick == null) {
+                        Spacer(modifier = Modifier.width(Dimens.SpacingLg))
+                    }
+                    leadContent()
+                    Spacer(modifier = Modifier.width(Dimens.SpacingMd))
                 }
-                leadContent()
-                Spacer(modifier = Modifier.width(Dimens.SpacingMd))
             }
         },
         actions = actions,

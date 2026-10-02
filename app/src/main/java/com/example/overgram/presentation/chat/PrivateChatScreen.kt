@@ -1,5 +1,6 @@
 package com.example.overgram.presentation.chat
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,10 +28,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -156,6 +161,10 @@ fun PrivateChatContent(
         }
     }
 
+    val focusManager = LocalFocusManager.current
+    var isEmojiPanelOpen by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = isEmojiPanelOpen) { isEmojiPanelOpen = false }
+
     val title = state.peer?.displayName ?: state.title
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -180,6 +189,13 @@ fun PrivateChatContent(
                 onValueChange = onInputChange,
                 onSendClick = onSend,
                 modifier = Modifier.imePadding(),
+                onEmojiClick = {
+                    if (!isEmojiPanelOpen) focusManager.clearFocus() // hides the keyboard
+                    isEmojiPanelOpen = !isEmojiPanelOpen
+                },
+                isEmojiPanelOpen = isEmojiPanelOpen,
+                onEmojiSelected = { onInputChange(state.input + it) },
+                onInputFocused = { isEmojiPanelOpen = false },
                 placeholderText = stringResource(R.string.chat_input_placeholder)
             )
         },

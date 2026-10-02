@@ -29,6 +29,18 @@ interface ChatRepository {
     /** Moves the caller's read cursor forward (never backwards). */
     suspend fun markRead(chatId: String, upToSeq: Long): AuthOutcome<Unit>
 
+    /** Users whose username starts with [query] (case-insensitive). */
+    suspend fun searchUsers(query: String): AuthOutcome<List<UserProfile>>
+
+    /** The DIRECT chat with [peerUserId], created if it doesn't exist yet. Returns its id. */
+    suspend fun openDirectChat(peerUserId: String): AuthOutcome<String>
+
+    /** The logged-in user's own profile. */
+    suspend fun getMe(): AuthOutcome<UserProfile>
+
+    /** Sets the caller's username; fails with [com.example.overgram.domain.model.AuthError.Validation] if taken. */
+    suspend fun setUsername(username: String): AuthOutcome<UserProfile>
+
     /** Id of the logged-in user, used to tell own messages apart in previews. */
     fun currentUserId(): String?
 }

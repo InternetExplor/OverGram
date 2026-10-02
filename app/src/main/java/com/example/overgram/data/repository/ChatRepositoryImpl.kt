@@ -3,11 +3,13 @@ package com.example.overgram.data.repository
 import com.example.overgram.data.local.prefs.TokenPreferences
 import com.example.overgram.data.remote.api.ChatApi
 import com.example.overgram.data.remote.dto.ChatDto
+import com.example.overgram.data.remote.dto.DirectChatRequestDto
 import com.example.overgram.data.remote.dto.ErrorDto
 import com.example.overgram.data.remote.dto.MessageDto
 import com.example.overgram.data.remote.dto.MessagePreviewDto
 import com.example.overgram.data.remote.dto.SendMessageRequestDto
 import com.example.overgram.data.remote.dto.SeqCursorDto
+import com.example.overgram.data.remote.dto.UpdateMeRequestDto
 import com.example.overgram.data.remote.dto.UserPublicDto
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
@@ -95,6 +97,20 @@ class ChatRepositoryImpl @Inject constructor(
     override suspend fun markRead(chatId: String, upToSeq: Long): AuthOutcome<Unit> =
         call { api.markRead(chatId, SeqCursorDto(upToSeq)) }.mapNotNull { }
 
+    override suspend fun searchUsers(query: String): AuthOutcome<List<UserProfile>> =
+        call { api.searchUsers(query, SEARCH_LIMIT) }.mapNotNull { result ->
+            result?.users.orEmpty().mapNotNull { it.toDomain() }
+        }
+
+    override suspend fun openDirectChat(peerUserId: String): AuthOutcome<String> =
+        call { api.getOrCreateDirectChat(DirectChatRequestDto(peerUserId)) }.mapNotNull { it?.id }
+
+    override suspend fun getMe(): AuthOutcome<UserProfile> =
+        call { api.getMe() }.mapNotNull { it?.toDomain() }
+
+    override suspend fun setUsername(username: String): AuthOutcome<UserProfile> =
+        call { api.updateMe(UpdateMeRequestDto(username = username)) }.mapNotNull { it?.toDomain() }
+
     override fun currentUserId(): String? = tokenPreferences.getUserId()
 
     /** Maps a success value; a null result means the body was malformed. */
@@ -153,6 +169,8 @@ class ChatRepositoryImpl @Inject constructor(
             error?.code == "RATE_LIMITED" || code() == 429 ->
                 AuthError.RateLimited(headers()["Retry-After"]?.trim()?.toIntOrNull())
             code() in 500..599 -> AuthError.ServiceUnavailable
+            // VALIDATION_ERROR, USERNAME_TAKEN…: the server's message is user-readable.
+            code() == 400 || code() == 409 -> AuthError.Validation(error?.message)
             else -> AuthError.Unknown(error?.message)
         }
     }
@@ -221,5 +239,6 @@ class ChatRepositoryImpl @Inject constructor(
         const val MAX_PAGES = 5
         const val PROFILE_CONCURRENCY = 6
         const val MESSAGE_PAGE_SIZE = 50
+        const val SEARCH_LIMIT = 20
     }
 }

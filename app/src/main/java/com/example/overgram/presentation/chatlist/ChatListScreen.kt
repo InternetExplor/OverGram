@@ -65,6 +65,7 @@ import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.chat.PrivateChatScreen
+import com.example.overgram.presentation.newchat.NewChatScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.ChatListItem
@@ -101,6 +102,7 @@ data object ChatListScreen : Screen {
             onRetry = viewModel::retry,
             onErrorShown = viewModel::onErrorShown,
             onLogout = viewModel::logout,
+            onNewChat = { navigator.push(NewChatScreen) },
             onChatClick = { chat ->
                 // Group chats get their own screen (separate card on the board).
                 if (chat.type == ChatType.DIRECT) {
@@ -125,7 +127,8 @@ fun ChatListContent(
     onRetry: () -> Unit,
     onErrorShown: () -> Unit,
     onLogout: () -> Unit,
-    onChatClick: (ChatSummary) -> Unit
+    onChatClick: (ChatSummary) -> Unit,
+    onNewChat: () -> Unit
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -167,7 +170,7 @@ fun ChatListContent(
         floatingActionButton = {
             if (selectedTab == 0) {
                 FloatingActionButton(
-                    onClick = {},
+                    onClick = onNewChat,
                     containerColor = PrimaryViolet,
                     contentColor = TextPrimary,
                     shape = CircleShape
@@ -370,7 +373,7 @@ fun ChatListContentPreview() {
     OverGramTheme {
         ChatListContent(
             state = ChatListUiState(chats = previewChats, currentUserId = "me", isLoading = false),
-            onRefresh = {}, onRetry = {}, onErrorShown = {}, onLogout = {}, onChatClick = {}
+            onRefresh = {}, onRetry = {}, onErrorShown = {}, onLogout = {}, onChatClick = {}, onNewChat = {}
         )
     }
 }
@@ -381,7 +384,7 @@ fun ChatListEmptyPreview() {
     OverGramTheme {
         ChatListContent(
             state = ChatListUiState(isLoading = false),
-            onRefresh = {}, onRetry = {}, onErrorShown = {}, onLogout = {}, onChatClick = {}
+            onRefresh = {}, onRetry = {}, onErrorShown = {}, onLogout = {}, onChatClick = {}, onNewChat = {}
         )
     }
 }

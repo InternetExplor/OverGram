@@ -42,12 +42,13 @@ data class AuthUiState(
         get() = isPhoneValid && phoneDigits.startsWith(TEST_NUMBER_PREFIX)
 
     val otpLength: Int
-        get() = OTP_LENGTH
+        get() = if (isTestNumber) TEST_NUMBER_OTP else OTP_LENGTH
 
     companion object {
         const val COUNTRY_PREFIX = "+998"
         const val PHONE_LOCAL_LENGTH = 9
         const val OTP_LENGTH = 6
+        const val TEST_NUMBER_OTP = 5
         const val TEST_NUMBER_PREFIX = "900000"
         const val TEST_PHONE_DIGITS = "900000001"
         const val TEST_OTP_CODE = "11111"

@@ -47,7 +47,7 @@
     <string name="chats_new_message">New message</string>
     <string name="chats_online_now">Online now</string>
     <string name="chats_empty_title">No chats yet</string>
-    <string name="chats_empty_subtitle">Start a conversation and it will show up here.</string>
+    <string name="chats_empty_subtitle">Tap the pencil button to find someone by username and start a chat.</string>
     <string name="chats_retry">Retry</string>
     <string name="chats_unknown_user">Unknown user</string>
     <string name="chats_untitled_group">Group</string>
@@ -69,6 +69,24 @@
     <string name="presence_last_seen_today">last seen at %1$s</string>
     <string name="presence_last_seen_yesterday">last seen yesterday at %1$s</string>
     <string name="presence_last_seen_date">last seen %1$s</string>
+
+    <string name="action_back">Back</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">New chat</string>
+    <string name="new_chat_search_hint">Search by username</string>
+    <string name="new_chat_hint">Type a username to find people. Only users who have set a username can be found.</string>
+    <string name="new_chat_no_results">Nobody found for \"%1$s\"</string>
+    <string name="new_chat_your_username">Your username: @%1$s</string>
+    <string name="new_chat_no_username">Set a username so others can find you</string>
+    <string name="new_chat_set_username">Set</string>
+    <string name="new_chat_change_username">Change</string>
+    <string name="username_dialog_title">Your username</string>
+    <string name="username_dialog_hint">3–32 characters: letters, digits and _</string>
+    <string name="username_dialog_save">Save</string>
+    <string name="username_dialog_cancel">Cancel</string>
+    <string name="username_invalid">Use 3–32 characters: letters, digits and _</string>
+    <string name="username_taken">That username is already taken.</string>
 
     <!-- Private chat -->
     <string name="chat_input_placeholder">Message…</string>
