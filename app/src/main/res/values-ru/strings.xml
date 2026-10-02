@@ -1,0 +1,243 @@
+<resources>
+    <!-- Russian. Plurals use one/few/many/other: 1 участник, 2 участника, 5 участников. -->
+
+    <!-- Auth: phone entry -->
+    <string name="auth_phone_title">Ваш номер телефона</string>
+    <string name="auth_phone_subtitle">Мы отправим код для подтверждения.</string>
+    <string name="auth_get_code">Получить код</string>
+    <string name="auth_get_code_countdown">Получить код через %1$d с</string>
+    <string name="auth_debug_use_test_number">Отладка: тестовый номер (+998 90 000 00 01)</string>
+
+    <!-- Auth: OTP -->
+    <string name="auth_otp_title">Введите код</string>
+    <string name="auth_otp_subtitle">Мы отправили код на %1$s</string>
+    <string name="auth_otp_boxes_description">Код подтверждения, цифр: %1$d</string>
+    <string name="auth_verify">Подтвердить</string>
+    <string name="auth_resend_code">Отправить код ещё раз</string>
+    <string name="auth_resend_code_countdown">Отправить ещё раз через %1$d с</string>
+    <string name="auth_request_new_code">Запросить новый код</string>
+    <string name="auth_request_new_code_countdown">Новый код через %1$d с</string>
+    <string name="auth_change_number">Изменить номер</string>
+    <string name="auth_debug_fill_code">Отладка: ввести тестовый код 11111</string>
+    <string name="auth_back">Назад</string>
+
+    <!-- Auth: errors -->
+    <string name="auth_error_invalid_code">Неверный код. Попробуйте ещё раз.</string>
+    <plurals name="auth_error_invalid_code_remaining">
+        <item quantity="one">Неверный код. Осталась %1$d попытка.</item>
+        <item quantity="few">Неверный код. Осталось %1$d попытки.</item>
+        <item quantity="many">Неверный код. Осталось %1$d попыток.</item>
+        <item quantity="other">Неверный код. Осталось попыток: %1$d.</item>
+    </plurals>
+    <string name="auth_error_code_expired">Срок действия кода истёк. Запросите новый код.</string>
+    <string name="auth_error_otp_locked">Слишком много неверных попыток — код заблокирован. Запросите новый код.</string>
+    <string name="auth_error_rate_limited">Слишком много запросов. Попробуйте через %1$d с.</string>
+    <string name="auth_error_rate_limited_later">Слишком много запросов. Попробуйте позже.</string>
+    <string name="auth_error_telegram_not_linked">Этот номер ещё не привязан к Telegram. Откройте бота, нажмите «Старт», поделитесь контактом и запросите код снова.</string>
+    <string name="auth_open_telegram_bot">Открыть бота в Telegram</string>
+    <string name="auth_error_validation">Проверьте номер телефона и попробуйте ещё раз.</string>
+    <string name="auth_error_session_ended">Сессия завершена. Войдите снова.</string>
+    <string name="auth_error_service_unavailable">Сервис временно недоступен. Попробуйте чуть позже.</string>
+    <string name="auth_error_network">Нет соединения. Проверьте интернет и попробуйте ещё раз.</string>
+    <string name="auth_error_unknown">Что-то пошло не так. Попробуйте ещё раз.</string>
+
+    <!-- Chat list -->
+    <string name="chats_search">Поиск</string>
+    <string name="chats_more_options">Ещё</string>
+    <string name="chats_new_message">Новое сообщение</string>
+    <string name="chats_online_now">Сейчас в сети</string>
+    <string name="chats_empty_title">Пока нет чатов</string>
+    <string name="chats_empty_subtitle">Нажмите на карандаш, чтобы найти человека по username и начать переписку.</string>
+    <string name="chats_retry">Повторить</string>
+    <string name="chats_unknown_user">Неизвестный пользователь</string>
+    <string name="chats_untitled_group">Группа</string>
+    <string name="chats_preview_you">Вы: %1$s</string>
+    <string name="chats_preview_sender">%1$s: %2$s</string>
+    <string name="chats_muted">Без звука</string>
+    <string name="chats_search_hint">Поиск по чатам</string>
+    <string name="chats_search_close">Закрыть поиск</string>
+    <string name="chats_search_no_results">Ничего не найдено по запросу «%1$s»</string>
+
+    <!-- System events (group) -->
+    <string name="system_you_subject">Вы</string>
+    <string name="system_you_object">вас</string>
+    <string name="system_someone">Кто-то</string>
+    <!-- The gender of other users is unknown, hence «(а)» as Telegram does. -->
+    <string name="system_group_created">%1$s создал(а) группу</string>
+    <string name="system_group_created_titled">%1$s создал(а) группу «%2$s»</string>
+    <string name="system_members_added">%1$s добавил(а) %2$s</string>
+    <string name="system_member_removed">%1$s удалил(а) %2$s</string>
+    <string name="system_member_left">%1$s покинул(а) группу</string>
+    <string name="system_owner_changed">%1$s теперь владелец группы</string>
+    <string name="system_role_changed">%1$s изменил(а) роль: %2$s</string>
+    <string name="system_you_group_created">Вы создали группу</string>
+    <string name="system_you_group_created_titled">Вы создали группу «%1$s»</string>
+    <string name="system_you_members_added">Вы добавили %1$s</string>
+    <string name="system_you_member_removed">Вы удалили %1$s</string>
+    <string name="system_you_member_left">Вы покинули группу</string>
+    <string name="system_you_owner">Теперь вы владелец группы</string>
+    <string name="system_you_role_changed">Вы изменили роль: %1$s</string>
+    <!-- Used as the object («добавил 2 участников»), so accusative. -->
+    <plurals name="system_members_count">
+        <item quantity="one">%1$d участника</item>
+        <item quantity="few">%1$d участников</item>
+        <item quantity="many">%1$d участников</item>
+        <item quantity="other">%1$d участника</item>
+    </plurals>
+    <string name="names_and">%1$s и %2$s</string>
+    <string name="chats_preview_photo">Фото</string>
+    <string name="chats_preview_video">Видео</string>
+    <string name="chats_preview_file">Файл</string>
+    <string name="chats_preview_system">Группа обновлена</string>
+    <string name="chats_preview_deleted">Сообщение удалено</string>
+    <string name="chats_preview_unsupported">Сообщение</string>
+    <string name="chats_preview_no_messages">Сообщений пока нет</string>
+    <string name="presence_online">в сети</string>
+    <string name="presence_last_seen_recently">был(а) недавно</string>
+    <string name="presence_last_seen_just_now">был(а) только что</string>
+    <plurals name="presence_last_seen_minutes">
+        <item quantity="one">был(а) %1$d минуту назад</item>
+        <item quantity="few">был(а) %1$d минуты назад</item>
+        <item quantity="many">был(а) %1$d минут назад</item>
+        <item quantity="other">был(а) %1$d минуты назад</item>
+    </plurals>
+    <string name="presence_last_seen_today">был(а) в %1$s</string>
+    <string name="presence_last_seen_yesterday">был(а) вчера в %1$s</string>
+    <string name="presence_last_seen_date">был(а) %1$s</string>
+
+    <string name="action_back">Назад</string>
+
+    <!-- Home tabs -->
+    <string name="tab_chats">Чаты</string>
+    <string name="tab_contacts">Контакты</string>
+    <string name="tab_settings">Настройки</string>
+
+    <!-- Contacts -->
+    <string name="contacts_find_people">Найти людей</string>
+    <string name="contacts_empty">Здесь появятся люди, с которыми вы переписываетесь. Нажмите «Найти людей», чтобы начать разговор.</string>
+
+    <!-- Settings -->
+    <string name="settings_no_username">Задать username</string>
+    <string name="settings_section_account">Аккаунт</string>
+    <string name="settings_edit_profile">Изменить профиль</string>
+    <string name="settings_edit_profile_subtitle">Имя, username и фото</string>
+    <string name="settings_section_storage">Данные и память</string>
+    <string name="settings_clear_cache">Очистить кеш</string>
+    <string name="settings_clear_cache_subtitle">Освободить место. Чаты и история загрузятся снова, когда вы их откроете.</string>
+    <string name="settings_clear_cache_confirm_title">Очистить кеш?</string>
+    <string name="settings_clear_cache_confirm_text">Сохранённые чаты и сообщения будут удалены с этого устройства. На сервере ничего не удаляется, неотправленные сообщения сохранятся.</string>
+    <string name="settings_clear_cache_confirm">Очистить</string>
+    <string name="settings_cache_cleared">Кеш очищен</string>
+    <string name="settings_section_about">О приложении</string>
+    <string name="settings_app_version">Версия %1$s</string>
+    <string name="settings_server">Сервер</string>
+    <string name="settings_server_version">Relay %1$s · %2$s</string>
+    <string name="settings_server_unknown">Сейчас недоступен</string>
+    <string name="settings_push_available">push-уведомления доступны</string>
+    <string name="settings_push_unavailable">push-уведомления недоступны</string>
+    <string name="settings_logout">Выйти</string>
+    <string name="settings_logout_confirm_title">Выйти из аккаунта?</string>
+    <string name="settings_logout_confirm_text">Чаты и сообщения, сохранённые на этом устройстве, будут удалены. Войти снова можно по номеру телефона.</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Изменить профиль</string>
+    <string name="profile_name">Имя</string>
+    <string name="profile_name_required">Имя не может быть пустым</string>
+    <string name="profile_username">Username</string>
+    <string name="profile_username_hint">3–32 символа: латинские буквы, цифры и _. По нему вас смогут найти.</string>
+    <string name="profile_username_cannot_remove">Username можно изменить, но нельзя удалить</string>
+    <string name="profile_phone">Телефон</string>
+    <string name="profile_phone_hint">Ваш номер видите только вы.</string>
+    <string name="profile_change_photo">Изменить фото</string>
+    <string name="profile_choose_photo">Выбрать фото</string>
+    <string name="profile_remove_photo">Удалить фото</string>
+
+    <!-- Realtime -->
+    <string name="connection_connecting">Соединение…</string>
+    <string name="connection_waiting_for_network">Ожидание сети…</string>
+    <string name="typing_short">печатает…</string>
+    <string name="typing_one">%1$s печатает…</string>
+    <string name="typing_two">%1$s и %2$s печатают…</string>
+    <plurals name="typing_many">
+        <item quantity="one">%1$d человек печатает…</item>
+        <item quantity="few">%1$d человека печатают…</item>
+        <item quantity="many">%1$d человек печатают…</item>
+        <item quantity="other">%1$d человека печатают…</item>
+    </plurals>
+    <string name="action_save">Сохранить</string>
+    <string name="action_cancel">Отмена</string>
+
+    <!-- Chat menu -->
+    <string name="chat_mute">Выключить уведомления</string>
+    <string name="chat_unmute">Включить уведомления</string>
+    <string name="chat_rename_group">Переименовать группу</string>
+    <string name="chat_add_members">Добавить участников</string>
+    <string name="chat_leave_group">Покинуть группу</string>
+    <string name="chat_leave_confirm_title">Покинуть группу?</string>
+    <string name="chat_leave_confirm_text">Вы перестанете получать сообщения из «%1$s». Чтобы вернуться, кто-то должен будет добавить вас снова.</string>
+    <string name="chat_members_more">%1$s и ещё %2$d</string>
+    <string name="chat_group_info">О группе</string>
+
+    <!-- Group info -->
+    <string name="group_info_title">О группе</string>
+    <plurals name="group_members_count">
+        <item quantity="one">%1$d участник</item>
+        <item quantity="few">%1$d участника</item>
+        <item quantity="many">%1$d участников</item>
+        <item quantity="other">%1$d участника</item>
+    </plurals>
+    <string name="group_online_count">%1$d в сети</string>
+    <string name="group_member_you">%1$s (вы)</string>
+    <string name="group_role_owner">владелец</string>
+    <string name="group_remove_member">Удалить: %1$s</string>
+    <string name="group_remove_title">Удалить участника?</string>
+    <string name="group_remove_text">%1$s больше не будет участником «%2$s» и перестанет получать сообщения группы.</string>
+    <string name="group_remove_confirm">Удалить</string>
+    <string name="group_members_incomplete">История группы очень длинная, поэтому показаны только участники из последних сообщений.</string>
+
+    <!-- Group creation / member picker -->
+    <string name="new_group">Новая группа</string>
+    <string name="new_group_title_hint">Название группы</string>
+    <string name="new_group_create">Создать</string>
+    <string name="new_group_pick_members">Добавьте хотя бы одного участника</string>
+    <string name="add_members_title">Добавить участников</string>
+    <string name="add_members_confirm">Добавить</string>
+    <plurals name="members_selected">
+        <item quantity="one">Выбран %1$d</item>
+        <item quantity="few">Выбрано %1$d</item>
+        <item quantity="many">Выбрано %1$d</item>
+        <item quantity="other">Выбрано %1$d</item>
+    </plurals>
+
+    <!-- New chat -->
+    <string name="new_chat_title">Новый чат</string>
+    <string name="new_chat_search_hint">Поиск по username</string>
+    <string name="new_chat_hint">Введите username, чтобы найти человека. Найти можно только тех, у кого задан username.</string>
+    <string name="new_chat_no_results">По запросу «%1$s» никого не найдено</string>
+    <string name="new_chat_your_username">Ваш username: @%1$s</string>
+    <string name="new_chat_no_username">Задайте username, чтобы вас могли найти</string>
+    <string name="new_chat_set_username">Задать</string>
+    <string name="new_chat_change_username">Изменить</string>
+    <string name="username_dialog_title">Ваш username</string>
+    <string name="username_dialog_hint">3–32 символа: латинские буквы, цифры и _</string>
+    <string name="username_dialog_save">Сохранить</string>
+    <string name="username_dialog_cancel">Отмена</string>
+    <string name="username_invalid">Используйте 3–32 символа: латинские буквы, цифры и _</string>
+
+    <!-- Private chat -->
+    <string name="chat_input_placeholder">Сообщение…</string>
+    <string name="input_attach">Прикрепить файл</string>
+    <string name="input_emoji">Эмодзи</string>
+    <string name="input_show_keyboard">Показать клавиатуру</string>
+    <string name="input_send">Отправить сообщение</string>
+    <string name="chat_empty">Здесь пока нет сообщений. Напишите первым!</string>
+    <string name="chat_tap_to_retry">Не отправлено. Нажмите, чтобы повторить.</string>
+    <string name="chat_failed_with_reason">Не отправлено: %1$s Нажмите, чтобы повторить.</string>
+    <string name="day_today">Сегодня</string>
+    <string name="day_yesterday">Вчера</string>
+    <string name="message_edited">изменено</string>
+    <string name="message_status_sending">Отправляется</string>
+    <string name="message_status_sent">Отправлено</string>
+    <string name="message_status_read">Прочитано</string>
+    <string name="message_status_failed">Не отправлено</string>
+</resources>
