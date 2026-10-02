@@ -19,10 +19,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.overgram.R
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OverGramTheme
@@ -94,7 +96,7 @@ fun ChatListItem(
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.NotificationsOff,
-                            contentDescription = "Muted",
+                            contentDescription = stringResource(R.string.chats_muted),
                             tint = TextSecondary,
                             modifier = Modifier.size(14.dp)
                         )

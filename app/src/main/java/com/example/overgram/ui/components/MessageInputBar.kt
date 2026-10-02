@@ -31,11 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.overgram.R
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.InputBarShape
@@ -87,7 +89,7 @@ fun MessageInputBar(
                     IconButton(onClick = onAttachClick) {
                         Icon(
                             imageVector = Icons.Default.AttachFile,
-                            contentDescription = "Attach file",
+                            contentDescription = stringResource(R.string.input_attach),
                             tint = TextSecondary
                         )
                     }
@@ -114,7 +116,7 @@ fun MessageInputBar(
                             IconButton(onClick = onClick) {
                                 Icon(
                                     imageVector = if (isEmojiPanelOpen) Icons.Default.Keyboard else Icons.Default.Face,
-                                    contentDescription = if (isEmojiPanelOpen) "Show keyboard" else "Emoji picker",
+                                    contentDescription = stringResource(if (isEmojiPanelOpen) R.string.input_show_keyboard else R.string.input_emoji),
                                     tint = if (isEmojiPanelOpen) PrimaryViolet else TextSecondary
                                 )
                             }
@@ -156,7 +158,7 @@ fun MessageInputBar(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send message",
+                        contentDescription = stringResource(R.string.input_send),
                         tint = TextPrimary,
                         modifier = Modifier.size(20.dp)
                     )

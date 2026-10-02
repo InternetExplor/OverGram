@@ -81,15 +81,41 @@ fun systemEventText(
     }
     val firstTarget = targets.firstOrNull()?.let { personName(it, currentUserId, profileOf) } ?: actor
 
+    // Separate "You …" sentences: other languages conjugate the verb by subject
+    // (ru: «Вы удалили» vs «Ада удалила»), so the actor can't just be slotted in.
+    val byMe = currentUserId != null && event.actorId == currentUserId
     return when (event.kind) {
-        SystemEventKind.GROUP_CREATED -> event.title?.let {
-            stringResource(R.string.system_group_created_titled, actor, it)
-        } ?: stringResource(R.string.system_group_created, actor)
-        SystemEventKind.MEMBERS_ADDED -> stringResource(R.string.system_members_added, actor, targetsText)
-        SystemEventKind.MEMBER_REMOVED -> stringResource(R.string.system_member_removed, actor, targetsText)
-        SystemEventKind.MEMBER_LEFT -> stringResource(R.string.system_member_left, firstTarget)
-        SystemEventKind.OWNER_CHANGED -> stringResource(R.string.system_owner_changed, firstTarget)
-        SystemEventKind.ROLE_CHANGED -> stringResource(R.string.system_role_changed, actor, targetsText)
+        SystemEventKind.GROUP_CREATED -> when {
+            byMe && event.title != null -> stringResource(R.string.system_you_group_created_titled, event.title)
+            byMe -> stringResource(R.string.system_you_group_created)
+            event.title != null -> stringResource(R.string.system_group_created_titled, actor, event.title)
+            else -> stringResource(R.string.system_group_created, actor)
+        }
+        SystemEventKind.MEMBERS_ADDED -> if (byMe) {
+            stringResource(R.string.system_you_members_added, targetsText)
+        } else {
+            stringResource(R.string.system_members_added, actor, targetsText)
+        }
+        SystemEventKind.MEMBER_REMOVED -> if (byMe) {
+            stringResource(R.string.system_you_member_removed, targetsText)
+        } else {
+            stringResource(R.string.system_member_removed, actor, targetsText)
+        }
+        SystemEventKind.MEMBER_LEFT -> if (event.targetUserIds.firstOrNull() == currentUserId || (byMe && event.targetUserIds.isEmpty())) {
+            stringResource(R.string.system_you_member_left)
+        } else {
+            stringResource(R.string.system_member_left, firstTarget)
+        }
+        SystemEventKind.OWNER_CHANGED -> if (event.targetUserIds.firstOrNull() == currentUserId) {
+            stringResource(R.string.system_you_owner)
+        } else {
+            stringResource(R.string.system_owner_changed, firstTarget)
+        }
+        SystemEventKind.ROLE_CHANGED -> if (byMe) {
+            stringResource(R.string.system_you_role_changed, targetsText)
+        } else {
+            stringResource(R.string.system_role_changed, actor, targetsText)
+        }
         SystemEventKind.UNKNOWN -> stringResource(R.string.chats_preview_system)
     }
 }

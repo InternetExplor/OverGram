@@ -43,7 +43,6 @@
     <!-- Chat list -->
     <string name="chats_search">Search</string>
     <string name="chats_more_options">More options</string>
-    <string name="chats_logout">Log out</string>
     <string name="chats_new_message">New message</string>
     <string name="chats_online_now">Online now</string>
     <string name="chats_empty_title">No chats yet</string>
@@ -69,6 +68,13 @@
     <string name="system_member_left">%1$s left the group</string>
     <string name="system_owner_changed">%1$s is now the owner</string>
     <string name="system_role_changed">%1$s changed the role of %2$s</string>
+    <string name="system_you_group_created">You created the group</string>
+    <string name="system_you_group_created_titled">You created the group “%1$s”</string>
+    <string name="system_you_members_added">You added %1$s</string>
+    <string name="system_you_member_removed">You removed %1$s</string>
+    <string name="system_you_member_left">You left the group</string>
+    <string name="system_you_owner">You are now the owner</string>
+    <string name="system_you_role_changed">You changed the role of %1$s</string>
     <plurals name="system_members_count">
         <item quantity="one">%1$d member</item>
         <item quantity="other">%1$d members</item>
@@ -204,10 +210,13 @@
     <string name="username_dialog_save">Save</string>
     <string name="username_dialog_cancel">Cancel</string>
     <string name="username_invalid">Use 3–32 characters: letters, digits and _</string>
-    <string name="username_taken">That username is already taken.</string>
 
     <!-- Private chat -->
     <string name="chat_input_placeholder">Message…</string>
+    <string name="input_attach">Attach file</string>
+    <string name="input_emoji">Emoji</string>
+    <string name="input_show_keyboard">Show keyboard</string>
+    <string name="input_send">Send message</string>
     <string name="chat_empty">No messages here yet. Say hi!</string>
     <string name="chat_tap_to_retry">Not sent. Tap to retry.</string>
     <string name="chat_failed_with_reason">Not sent: %1$s Tap to retry.</string>
