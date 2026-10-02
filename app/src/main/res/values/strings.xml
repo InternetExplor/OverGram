@@ -52,6 +52,28 @@
     <string name="chats_unknown_user">Unknown user</string>
     <string name="chats_untitled_group">Group</string>
     <string name="chats_preview_you">You: %1$s</string>
+    <string name="chats_preview_sender">%1$s: %2$s</string>
+    <string name="chats_muted">Muted</string>
+    <string name="chats_search_hint">Search chats</string>
+    <string name="chats_search_close">Close search</string>
+    <string name="chats_search_no_results">No chats match \"%1$s\"</string>
+
+    <!-- System events (group) -->
+    <string name="system_you_subject">You</string>
+    <string name="system_you_object">you</string>
+    <string name="system_someone">Someone</string>
+    <string name="system_group_created">%1$s created the group</string>
+    <string name="system_group_created_titled">%1$s created the group “%2$s”</string>
+    <string name="system_members_added">%1$s added %2$s</string>
+    <string name="system_member_removed">%1$s removed %2$s</string>
+    <string name="system_member_left">%1$s left the group</string>
+    <string name="system_owner_changed">%1$s is now the owner</string>
+    <string name="system_role_changed">%1$s changed the role of %2$s</string>
+    <plurals name="system_members_count">
+        <item quantity="one">%1$d member</item>
+        <item quantity="other">%1$d members</item>
+    </plurals>
+    <string name="names_and">%1$s and %2$s</string>
     <string name="chats_preview_photo">Photo</string>
     <string name="chats_preview_video">Video</string>
     <string name="chats_preview_file">File</string>
@@ -71,6 +93,30 @@
     <string name="presence_last_seen_date">last seen %1$s</string>
 
     <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- Chat menu -->
+    <string name="chat_mute">Mute notifications</string>
+    <string name="chat_unmute">Unmute notifications</string>
+    <string name="chat_rename_group">Rename group</string>
+    <string name="chat_add_members">Add members</string>
+    <string name="chat_leave_group">Leave group</string>
+    <string name="chat_leave_confirm_title">Leave group?</string>
+    <string name="chat_leave_confirm_text">You will stop receiving messages from “%1$s”. Someone will have to add you again to come back.</string>
+    <string name="chat_members_more">%1$s and %2$d more</string>
+
+    <!-- Group creation / member picker -->
+    <string name="new_group">New group</string>
+    <string name="new_group_title_hint">Group name</string>
+    <string name="new_group_create">Create</string>
+    <string name="new_group_pick_members">Add at least one member</string>
+    <string name="add_members_title">Add members</string>
+    <string name="add_members_confirm">Add</string>
+    <plurals name="members_selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
 
     <!-- New chat -->
     <string name="new_chat_title">New chat</string>

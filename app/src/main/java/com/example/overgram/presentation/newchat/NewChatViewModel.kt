@@ -4,13 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
+import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
 import com.example.overgram.domain.usecase.GetMyProfileUseCase
 import com.example.overgram.domain.usecase.OpenDirectChatUseCase
 import com.example.overgram.domain.usecase.SearchUsersUseCase
 import com.example.overgram.domain.usecase.SetUsernameUseCase
-import com.example.overgram.presentation.chat.PrivateChatArgs
+import com.example.overgram.presentation.chat.ChatArgs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,7 +33,7 @@ data class NewChatUiState(
     val openingUserId: String? = null,
     val error: AuthError? = null,
     /** One-shot: navigate to this chat, then call [NewChatViewModel.onChatOpened]. */
-    val openChat: PrivateChatArgs? = null,
+    val openChat: ChatArgs? = null,
     val isUsernameDialogOpen: Boolean = false,
     val usernameInput: String = "",
     val isUsernameInvalid: Boolean = false,
@@ -101,7 +102,7 @@ class NewChatViewModel @Inject constructor(
                 is AuthOutcome.Success -> _uiState.update {
                     it.copy(
                         openingUserId = null,
-                        openChat = PrivateChatArgs(outcome.value, user.id, user.displayName)
+                        openChat = ChatArgs(outcome.value, ChatType.DIRECT, user.id, user.displayName)
                     )
                 }
                 is AuthOutcome.Failure -> {

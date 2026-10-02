@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OverGramTheme
+import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
 
@@ -34,6 +40,7 @@ import com.example.overgram.ui.theme.TextSecondary
  * @param unreadCount Number of unread messages (if > 0, displays UnreadBadge).
  * @param avatarUrl Optional avatar image URL.
  * @param isOnline Whether to display online indicator dot on the avatar.
+ * @param isMuted Shows a muted icon and a grey unread badge.
  * @param onClick Click callback when tapping the chat item.
  */
 @Composable
@@ -45,6 +52,7 @@ fun ChatListItem(
     unreadCount: Int = 0,
     avatarUrl: String? = null,
     isOnline: Boolean = false,
+    isMuted: Boolean = false,
     onClick: () -> Unit = {}
 ) {
     Surface(
@@ -71,13 +79,25 @@ fun ChatListItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (isMuted) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.NotificationsOff,
+                            contentDescription = "Muted",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -104,7 +124,11 @@ fun ChatListItem(
 
                 if (unreadCount > 0) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    UnreadBadge(count = unreadCount)
+                    // Muted chats still count unread, but without drawing attention.
+                    UnreadBadge(
+                        count = unreadCount,
+                        backgroundColor = if (isMuted) SurfaceElevatedDark else PrimaryViolet
+                    )
                 }
             }
         }

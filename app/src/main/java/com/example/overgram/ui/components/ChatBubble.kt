@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +35,7 @@ import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.OverGramTheme
+import com.example.overgram.ui.theme.PrimaryVioletLight
 import com.example.overgram.ui.theme.ReceivedBubbleColor
 import com.example.overgram.ui.theme.ReceivedBubbleShape
 import com.example.overgram.ui.theme.SentBubbleColor
@@ -53,6 +55,8 @@ enum class BubbleStatus { Sending, Sent, Read, Failed }
  * @param status Delivery state icon for sent messages.
  * @param isEdited Shows an "edited" label before the timestamp.
  * @param isPlaceholder Renders [message] as a muted italic note (e.g. "Message deleted").
+ * @param senderName Shown above the text, for incoming messages in group chats.
+ * @param senderColor Colour of [senderName].
  * @param onClick Optional click callback, e.g. to retry a failed message.
  */
 @Composable
@@ -64,6 +68,8 @@ fun ChatBubble(
     status: BubbleStatus = BubbleStatus.Read,
     isEdited: Boolean = false,
     isPlaceholder: Boolean = false,
+    senderName: String? = null,
+    senderColor: Color = PrimaryVioletLight,
     onClick: (() -> Unit)? = null
 ) {
     val bubbleShape = if (isSent) SentBubbleShape else ReceivedBubbleShape
@@ -87,6 +93,17 @@ fun ChatBubble(
             Column(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
+                if (senderName != null) {
+                    Text(
+                        text = senderName,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = senderColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.size(2.dp))
+                }
+
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyLarge,

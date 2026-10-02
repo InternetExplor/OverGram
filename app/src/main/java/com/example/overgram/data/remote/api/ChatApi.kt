@@ -1,13 +1,18 @@
 package com.example.overgram.data.remote.api
 
 import com.example.overgram.core.network.AuthInterceptor
+import com.example.overgram.data.remote.dto.AddMembersRequestDto
 import com.example.overgram.data.remote.dto.ChatDto
 import com.example.overgram.data.remote.dto.ChatListPageDto
+import com.example.overgram.data.remote.dto.ChatMembersDto
+import com.example.overgram.data.remote.dto.ChatSettingsRequestDto
+import com.example.overgram.data.remote.dto.CreateGroupRequestDto
 import com.example.overgram.data.remote.dto.DirectChatRequestDto
 import com.example.overgram.data.remote.dto.MessagePageDto
 import com.example.overgram.data.remote.dto.SendMessageRequestDto
 import com.example.overgram.data.remote.dto.SendMessageResultDto
 import com.example.overgram.data.remote.dto.SeqCursorDto
+import com.example.overgram.data.remote.dto.UpdateChatRequestDto
 import com.example.overgram.data.remote.dto.UpdateMeRequestDto
 import com.example.overgram.data.remote.dto.UserPublicDto
 import com.example.overgram.data.remote.dto.UserSearchResultDto
@@ -16,6 +21,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -50,6 +56,39 @@ interface ChatApi {
     /** Returns the existing DIRECT chat with this peer (200) or creates one (201). */
     @POST("v1/chats/direct")
     suspend fun getOrCreateDirectChat(@Body body: DirectChatRequestDto): Response<ChatDto>
+
+    /** Caller must be an active member (403 otherwise). */
+    @GET("v1/chats/{id}")
+    suspend fun getChat(@Path("id") chatId: String): Response<ChatDto>
+
+    /** Always creates a new group; the caller becomes OWNER. */
+    @POST("v1/chats/group")
+    suspend fun createGroup(@Body body: CreateGroupRequestDto): Response<ChatDto>
+
+    /** ADMIN/OWNER only. */
+    @PATCH("v1/chats/{id}")
+    suspend fun updateChat(
+        @Path("id") chatId: String,
+        @Body body: UpdateChatRequestDto
+    ): Response<ChatDto>
+
+    /** ADMIN/OWNER only. Returns the updated member list. */
+    @POST("v1/chats/{id}/members")
+    suspend fun addMembers(
+        @Path("id") chatId: String,
+        @Body body: AddMembersRequestDto
+    ): Response<ChatMembersDto>
+
+    /** If the OWNER leaves, ownership passes on automatically. */
+    @POST("v1/chats/{id}/leave")
+    suspend fun leaveChat(@Path("id") chatId: String): Response<Unit>
+
+    /** The caller's own mute setting; invisible to other members. */
+    @PUT("v1/chats/{id}/settings")
+    suspend fun updateSettings(
+        @Path("id") chatId: String,
+        @Body body: ChatSettingsRequestDto
+    ): Response<ChatDto>
 
     /** Newest first; [beforeSeq] pages backwards (exclusive). */
     @GET("v1/chats/{id}/messages")

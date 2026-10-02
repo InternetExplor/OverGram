@@ -2,24 +2,33 @@ package com.example.overgram.data.repository
 
 import com.example.overgram.data.local.prefs.TokenPreferences
 import com.example.overgram.data.remote.api.ChatApi
+import com.example.overgram.data.remote.dto.AddMembersRequestDto
 import com.example.overgram.data.remote.dto.ChatDto
+import com.example.overgram.data.remote.dto.ChatSettingsRequestDto
+import com.example.overgram.data.remote.dto.CreateGroupRequestDto
 import com.example.overgram.data.remote.dto.DirectChatRequestDto
 import com.example.overgram.data.remote.dto.ErrorDto
 import com.example.overgram.data.remote.dto.MessageDto
 import com.example.overgram.data.remote.dto.MessagePreviewDto
 import com.example.overgram.data.remote.dto.SendMessageRequestDto
 import com.example.overgram.data.remote.dto.SeqCursorDto
+import com.example.overgram.data.remote.dto.SystemBodyDto
+import com.example.overgram.data.remote.dto.UpdateChatRequestDto
 import com.example.overgram.data.remote.dto.UpdateMeRequestDto
 import com.example.overgram.data.remote.dto.UserPublicDto
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
+import com.example.overgram.domain.model.ChatMember
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.MemberRole
 import com.example.overgram.domain.model.Message
 import com.example.overgram.domain.model.MessagePage
 import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SentMessage
+import com.example.overgram.domain.model.SystemEvent
+import com.example.overgram.domain.model.SystemEventKind
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.domain.repository.ChatRepository
 import com.google.gson.Gson
@@ -61,14 +70,47 @@ class ChatRepositoryImpl @Inject constructor(
             }
         } while (cursor != null && ++pages < MAX_PAGES)
 
+        // Peers are refreshed every time for their presence; group senders only need a name.
         val peerIds = chats.mapNotNull { it.peerUserId }.distinct()
-        val profiles = loadProfiles(peerIds)
+        val senderIds = chats.filter { it.type == ChatType.GROUP.name }
+            .mapNotNull { it.lastMessage?.senderId }
+            .distinct()
+        val profiles = loadProfiles(peerIds, refresh = true) + loadProfiles(senderIds, refresh = false)
         return AuthOutcome.Success(chats.mapNotNull { it.toDomain(profiles) })
     }
 
     override suspend fun getUser(userId: String): AuthOutcome<UserProfile> =
         call { api.getUser(userId) }.mapNotNull { it?.toDomain() }
             .also { if (it is AuthOutcome.Success) profileCache[userId] = it.value }
+
+    override suspend fun getUsers(userIds: Collection<String>): Map<String, UserProfile> =
+        loadProfiles(userIds.distinct(), refresh = false)
+
+    override suspend fun getChat(chatId: String): AuthOutcome<ChatSummary> =
+        call { api.getChat(chatId) }.resolveChat()
+
+    override suspend fun createGroup(title: String, memberIds: List<String>): AuthOutcome<String> =
+        call { api.createGroup(CreateGroupRequestDto(title, memberIds)) }.mapNotNull { it?.id }
+
+    override suspend fun renameGroup(chatId: String, title: String): AuthOutcome<ChatSummary> =
+        call { api.updateChat(chatId, UpdateChatRequestDto(title)) }.resolveChat()
+
+    override suspend fun addMembers(chatId: String, userIds: List<String>): AuthOutcome<List<ChatMember>> =
+        call { api.addMembers(chatId, AddMembersRequestDto(userIds)) }.mapNotNull { result ->
+            result?.members.orEmpty().mapNotNull { member ->
+                ChatMember(
+                    userId = member.userId ?: return@mapNotNull null,
+                    role = MemberRole.entries.firstOrNull { it.name == member.role } ?: MemberRole.MEMBER,
+                    isOnline = member.online ?: false
+                )
+            }
+        }
+
+    override suspend fun leaveChat(chatId: String): AuthOutcome<Unit> =
+        call { api.leaveChat(chatId) }.mapNotNull { }
+
+    override suspend fun setMuted(chatId: String, muted: Boolean): AuthOutcome<ChatSummary> =
+        call { api.updateSettings(chatId, ChatSettingsRequestDto(muted)) }.resolveChat()
 
     override suspend fun getMessages(chatId: String, beforeSeq: Long?): AuthOutcome<MessagePage> =
         call { api.listMessages(chatId, beforeSeq, MESSAGE_PAGE_SIZE) }.mapNotNull { page ->
@@ -100,6 +142,7 @@ class ChatRepositoryImpl @Inject constructor(
     override suspend fun searchUsers(query: String): AuthOutcome<List<UserProfile>> =
         call { api.searchUsers(query, SEARCH_LIMIT) }.mapNotNull { result ->
             result?.users.orEmpty().mapNotNull { it.toDomain() }
+                .onEach { profileCache[it.id] = it }
         }
 
     override suspend fun openDirectChat(peerUserId: String): AuthOutcome<String> =
@@ -123,14 +166,23 @@ class ChatRepositoryImpl @Inject constructor(
             is AuthOutcome.Failure -> this
         }
 
+    /** A single-chat response, with the DIRECT peer's profile resolved. */
+    private suspend fun AuthOutcome<ChatDto?>.resolveChat(): AuthOutcome<ChatSummary> {
+        val dto = (this as? AuthOutcome.Success)?.value
+        val profiles = dto?.peerUserId?.let { loadProfiles(listOf(it), refresh = true) }.orEmpty()
+        return mapNotNull { it?.toDomain(profiles) }
+    }
+
     /**
-     * Relay has no batch profile endpoint, so peers are fetched one by one (a few at a time
+     * Relay has no batch profile endpoint, so profiles are fetched one by one (a few at a time
      * to stay well inside the 300 req/min limit). A failed fetch falls back to the cache.
+     * With [refresh] = false, cached profiles are used as is and only unknown users are fetched.
      */
-    private suspend fun loadProfiles(userIds: List<String>): Map<String, UserProfile> {
+    private suspend fun loadProfiles(userIds: List<String>, refresh: Boolean): Map<String, UserProfile> {
+        val toFetch = if (refresh) userIds else userIds.filterNot(profileCache::containsKey)
         val semaphore = Semaphore(PROFILE_CONCURRENCY)
         coroutineScope {
-            userIds.map { id ->
+            toFetch.map { id ->
                 async {
                     semaphore.withPermit {
                         val outcome = call { api.getUser(id) }
@@ -169,8 +221,9 @@ class ChatRepositoryImpl @Inject constructor(
             error?.code == "RATE_LIMITED" || code() == 429 ->
                 AuthError.RateLimited(headers()["Retry-After"]?.trim()?.toIntOrNull())
             code() in 500..599 -> AuthError.ServiceUnavailable
-            // VALIDATION_ERROR, USERNAME_TAKEN…: the server's message is user-readable.
-            code() == 400 || code() == 409 -> AuthError.Validation(error?.message)
+            // VALIDATION_ERROR, USERNAME_TAKEN, FORBIDDEN ("You must be an admin…"), NOT_FOUND:
+            // the server's message is user-readable.
+            code() in setOf(400, 403, 404, 409) -> AuthError.Validation(error?.message)
             else -> AuthError.Unknown(error?.message)
         }
     }
@@ -186,12 +239,14 @@ class ChatRepositoryImpl @Inject constructor(
     private fun ChatDto.toDomain(profiles: Map<String, UserProfile>): ChatSummary? {
         val id = id ?: return null.also { Timber.w("Skipping chat without id") }
         val chatType = if (type == "GROUP") ChatType.GROUP else ChatType.DIRECT
+        val preview = lastMessage?.toDomain()
         return ChatSummary(
             id = id,
             type = chatType,
             title = title,
             peer = peerUserId?.let(profiles::get),
-            lastMessage = lastMessage?.toDomain(),
+            lastMessage = preview,
+            lastMessageSender = preview?.senderId?.takeIf { chatType == ChatType.GROUP }?.let(profiles::get),
             lastActivityAt = lastActivityAt ?: 0L,
             unreadCount = unreadCount ?: 0,
             isMuted = muted ?: false
@@ -199,26 +254,47 @@ class ChatRepositoryImpl @Inject constructor(
     }
 
     private fun MessagePreviewDto.toDomain(): MessagePreview? {
+        val messageType = MessageType.entries.firstOrNull { it.name == type } ?: MessageType.UNKNOWN
         return MessagePreview(
             senderId = senderId ?: return null,
-            type = MessageType.entries.firstOrNull { it.name == type } ?: MessageType.UNKNOWN,
+            type = messageType,
             body = body,
             createdAt = createdAt ?: return null,
-            isDeleted = deletedAt != null
+            isDeleted = deletedAt != null,
+            systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(body) else null
         )
     }
 
     private fun MessageDto.toDomain(): Message? {
+        val messageType = MessageType.entries.firstOrNull { it.name == type } ?: MessageType.UNKNOWN
         return Message(
             clientMessageId = clientMessageId ?: return null,
             serverId = serverId ?: return null,
             serverSeq = serverSeq ?: return null,
             senderId = senderId ?: return null,
-            type = MessageType.entries.firstOrNull { it.name == type } ?: MessageType.UNKNOWN,
+            type = messageType,
             body = body,
             createdAt = createdAt ?: return null,
             isEdited = editedAt != null,
-            isDeleted = deletedAt != null
+            isDeleted = deletedAt != null,
+            systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(body) else null
+        )
+    }
+
+    /** SYSTEM bodies are a JSON *string*; anything unparseable is simply not rendered as an event. */
+    private fun parseSystemEvent(body: String?): SystemEvent? {
+        val dto = try {
+            body?.let { gson.fromJson(it, SystemBodyDto::class.java) }
+        } catch (e: JsonParseException) {
+            Timber.w(e, "Unparseable SYSTEM body")
+            null
+        } ?: return null
+        return SystemEvent(
+            kind = SystemEventKind.entries.firstOrNull { it.name.equals(dto.event, ignoreCase = true) }
+                ?: SystemEventKind.UNKNOWN,
+            actorId = dto.actorId ?: return null,
+            targetUserIds = dto.targetUserIds.orEmpty(),
+            title = dto.title
         )
     }
 

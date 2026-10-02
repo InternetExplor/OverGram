@@ -67,6 +67,43 @@ data class SeqCursorDto(
     @SerializedName("upToSeq") val upToSeq: Long
 )
 
+/** The `body` of a SYSTEM message is a JSON string of this shape. */
+data class SystemBodyDto(
+    @SerializedName("event") val event: String?,
+    @SerializedName("actorId") val actorId: String?,
+    @SerializedName("targetUserIds") val targetUserIds: List<String>?,
+    @SerializedName("title") val title: String?
+)
+
+data class CreateGroupRequestDto(
+    @SerializedName("title") val title: String,
+    @SerializedName("memberIds") val memberIds: List<String>
+)
+
+data class UpdateChatRequestDto(
+    @SerializedName("title") val title: String
+)
+
+/** `mutedUntil` null (with muted = true) means muted indefinitely. */
+data class ChatSettingsRequestDto(
+    @SerializedName("muted") val muted: Boolean,
+    @SerializedName("mutedUntil") val mutedUntil: Long? = null
+)
+
+data class AddMembersRequestDto(
+    @SerializedName("userIds") val userIds: List<String>
+)
+
+data class ChatMembersDto(
+    @SerializedName("members") val members: List<ChatMemberDto>?
+)
+
+data class ChatMemberDto(
+    @SerializedName("userId") val userId: String?,
+    @SerializedName("role") val role: String?,
+    @SerializedName("online") val online: Boolean?
+)
+
 data class UserSearchResultDto(
     @SerializedName("users") val users: List<UserPublicDto>?
 )

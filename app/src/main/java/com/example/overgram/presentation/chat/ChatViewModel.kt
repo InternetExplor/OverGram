@@ -4,13 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
+import com.example.overgram.domain.model.ChatSummary
+import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.Message
 import com.example.overgram.domain.model.MessageType
+import com.example.overgram.domain.usecase.CreateGroupUseCase
+import com.example.overgram.domain.usecase.GetChatUseCase
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
 import com.example.overgram.domain.usecase.GetMessagesUseCase
-import com.example.overgram.domain.usecase.GetUserUseCase
+import com.example.overgram.domain.usecase.GetUsersUseCase
+import com.example.overgram.domain.usecase.LeaveChatUseCase
 import com.example.overgram.domain.usecase.MarkChatReadUseCase
+import com.example.overgram.domain.usecase.RenameGroupUseCase
 import com.example.overgram.domain.usecase.SendTextMessageUseCase
+import com.example.overgram.domain.usecase.SetChatMutedUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -25,19 +32,23 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-@HiltViewModel(assistedFactory = PrivateChatViewModel.Factory::class)
-class PrivateChatViewModel @AssistedInject constructor(
-    @Assisted private val args: PrivateChatArgs,
+@HiltViewModel(assistedFactory = ChatViewModel.Factory::class)
+class ChatViewModel @AssistedInject constructor(
+    @Assisted private val args: ChatArgs,
     private val getMessages: GetMessagesUseCase,
     private val sendTextMessage: SendTextMessageUseCase,
     private val markChatRead: MarkChatReadUseCase,
-    private val getUser: GetUserUseCase,
+    private val getChat: GetChatUseCase,
+    private val getUsers: GetUsersUseCase,
+    private val setChatMuted: SetChatMutedUseCase,
+    private val renameGroup: RenameGroupUseCase,
+    private val leaveChat: LeaveChatUseCase,
     getCurrentUserId: GetCurrentUserIdUseCase
 ) : ViewModel() {
 
     @AssistedFactory
     interface Factory {
-        fun create(args: PrivateChatArgs): PrivateChatViewModel
+        fun create(args: ChatArgs): ChatViewModel
     }
 
     private val myUserId = getCurrentUserId()
@@ -48,17 +59,22 @@ class PrivateChatViewModel @AssistedInject constructor(
     /** Own messages not yet confirmed: being sent, or failed. */
     private val pending = LinkedHashMap<String, ChatMessageItem>()
 
+    /** Users whose profile was already requested, so each is fetched once. */
+    private val requestedProfiles = HashSet<String>()
+
     private var lastMarkedReadSeq = 0L
     private var pollingJob: Job? = null
     private var olderJob: Job? = null
     private var newestJob: Job? = null
 
-    private val _uiState = MutableStateFlow(PrivateChatUiState(title = args.title))
-    val uiState: StateFlow<PrivateChatUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(
+        ChatUiState(type = args.type, title = args.title, currentUserId = myUserId)
+    )
+    val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     init {
         loadNewest(initial = true)
-        refreshPeer()
+        refreshDetails()
     }
 
     fun onInputChange(text: String) {
@@ -71,6 +87,7 @@ class PrivateChatViewModel @AssistedInject constructor(
         val item = ChatMessageItem(
             clientMessageId = UUID.randomUUID().toString(),
             serverSeq = null,
+            senderId = myUserId.orEmpty(),
             type = MessageType.TEXT,
             body = text,
             createdAt = System.currentTimeMillis(),
@@ -117,15 +134,84 @@ class PrivateChatViewModel @AssistedInject constructor(
     fun retryLoad() {
         _uiState.update { it.copy(isLoading = true, loadError = null) }
         loadNewest(initial = true)
+        refreshDetails()
     }
 
     fun onErrorShown() {
         _uiState.update { it.copy(error = null) }
     }
 
+    fun toggleMute() {
+        val muted = !_uiState.value.isMuted
+        _uiState.update { it.copy(isMuted = muted) } // optimistic
+        viewModelScope.launch {
+            when (val outcome = setChatMuted(args.chatId, muted)) {
+                is AuthOutcome.Success -> applyDetails(outcome.value)
+                is AuthOutcome.Failure -> {
+                    _uiState.update { it.copy(isMuted = !muted) }
+                    onError(outcome.error)
+                }
+            }
+        }
+    }
+
+    fun openRenameDialog() {
+        _uiState.update { it.copy(renameDialog = RenameDialogState(input = it.title)) }
+    }
+
+    fun onRenameInput(text: String) {
+        _uiState.update { state ->
+            state.copy(
+                renameDialog = state.renameDialog?.copy(
+                    input = text.take(CreateGroupUseCase.MAX_TITLE_LENGTH),
+                    error = null
+                )
+            )
+        }
+    }
+
+    fun dismissRenameDialog() {
+        _uiState.update { it.copy(renameDialog = null) }
+    }
+
+    fun saveRename() {
+        val dialog = _uiState.value.renameDialog ?: return
+        val title = dialog.input.trim()
+        if (title.isEmpty() || dialog.isSaving) return
+        _uiState.update { it.copy(renameDialog = dialog.copy(isSaving = true, error = null)) }
+        viewModelScope.launch {
+            when (val outcome = renameGroup(args.chatId, title)) {
+                is AuthOutcome.Success -> {
+                    applyDetails(outcome.value)
+                    _uiState.update { it.copy(renameDialog = null) }
+                }
+                is AuthOutcome.Failure -> _uiState.update { state ->
+                    state.copy(renameDialog = state.renameDialog?.copy(isSaving = false, error = outcome.error))
+                }
+            }
+        }
+    }
+
+    fun leave() {
+        if (_uiState.value.isLeaving) return
+        _uiState.update { it.copy(isLeaving = true) }
+        viewModelScope.launch {
+            when (val outcome = leaveChat(args.chatId)) {
+                is AuthOutcome.Success -> {
+                    stopPolling()
+                    _uiState.update { it.copy(isLeaving = false, hasLeft = true) }
+                }
+                is AuthOutcome.Failure -> {
+                    _uiState.update { it.copy(isLeaving = false) }
+                    onError(outcome.error)
+                }
+            }
+        }
+    }
+
     /**
-     * Until the WebSocket lands, new messages and the peer's presence are pulled
-     * periodically while the screen is visible.
+     * Until the WebSocket lands, new messages and chat details (presence, title, mute) are
+     * pulled periodically while the screen is visible.
      */
     fun startPolling() {
         if (pollingJob?.isActive == true) return
@@ -134,7 +220,7 @@ class PrivateChatViewModel @AssistedInject constructor(
             while (isActive) {
                 delay(POLL_INTERVAL_MS)
                 loadNewest(initial = false)
-                if (++tick % PRESENCE_EVERY_N_POLLS == 0) refreshPeer()
+                if (++tick % DETAILS_EVERY_N_POLLS == 0) refreshDetails()
             }
         }
     }
@@ -170,7 +256,8 @@ class PrivateChatViewModel @AssistedInject constructor(
                     if (pending.containsKey(item.clientMessageId)) {
                         pending[item.clientMessageId] = item.copy(outgoingState = OutgoingState.Failed)
                     }
-                    if (outcome.error.endsSession()) onError(outcome.error)
+                    // Not a member any more, rate limited…: say why, the bubble alone can't.
+                    if (outcome.error !is AuthError.Network) onError(outcome.error)
                 }
             }
             publish()
@@ -215,11 +302,23 @@ class PrivateChatViewModel @AssistedInject constructor(
         }
     }
 
-    private fun refreshPeer() {
-        val peerId = args.peerUserId ?: return
+    private fun refreshDetails() {
         viewModelScope.launch {
-            val outcome = getUser(peerId)
-            if (outcome is AuthOutcome.Success) _uiState.update { it.copy(peer = outcome.value) }
+            val outcome = getChat(args.chatId)
+            if (outcome is AuthOutcome.Success) applyDetails(outcome.value)
+        }
+    }
+
+    private fun applyDetails(chat: ChatSummary) {
+        _uiState.update { state ->
+            state.copy(
+                title = when (chat.type) {
+                    ChatType.GROUP -> chat.title ?: state.title
+                    ChatType.DIRECT -> chat.peer?.displayName ?: state.title
+                },
+                peer = chat.peer ?: state.peer,
+                isMuted = chat.isMuted
+            )
         }
     }
 
@@ -242,6 +341,23 @@ class PrivateChatViewModel @AssistedInject constructor(
             .map { it.toItem() }
         val outgoing = pending.values.sortedByDescending { it.createdAt }
         _uiState.update { it.copy(messages = outgoing + history) }
+        if (args.type == ChatType.GROUP) loadMissingProfiles()
+    }
+
+    /** Group bubbles and system notes need the names of everyone they mention. */
+    private fun loadMissingProfiles() {
+        val missing = confirmed.values
+            .flatMap { message ->
+                listOf(message.senderId) + message.systemEvent?.let { listOf(it.actorId) + it.targetUserIds }.orEmpty()
+            }
+            .filter { it != myUserId && requestedProfiles.add(it) }
+        if (missing.isEmpty()) return
+        viewModelScope.launch {
+            val loaded = getUsers(missing)
+            // Allow another attempt later for the ones that failed.
+            requestedProfiles -= (missing - loaded.keys).toSet()
+            _uiState.update { it.copy(profiles = it.profiles + loaded) }
+        }
     }
 
     private fun Message.toItem(): ChatMessageItem {
@@ -249,13 +365,15 @@ class PrivateChatViewModel @AssistedInject constructor(
         return ChatMessageItem(
             clientMessageId = clientMessageId,
             serverSeq = serverSeq,
+            senderId = senderId,
             type = type,
             body = body,
             createdAt = createdAt,
-            isOutgoing = isOwn,
+            isOutgoing = isOwn && type != MessageType.SYSTEM,
             isEdited = isEdited,
             isDeleted = isDeleted,
-            outgoingState = if (isOwn) OutgoingState.Sent else null
+            outgoingState = if (isOwn) OutgoingState.Sent else null,
+            systemEvent = systemEvent
         )
     }
 
@@ -271,7 +389,7 @@ class PrivateChatViewModel @AssistedInject constructor(
     private companion object {
         const val POLL_INTERVAL_MS = 4_000L
 
-        /** Presence is refreshed every ~16 s. */
-        const val PRESENCE_EVERY_N_POLLS = 4
+        /** Presence, title and mute are refreshed every ~16 s. */
+        const val DETAILS_EVERY_N_POLLS = 4
     }
 }

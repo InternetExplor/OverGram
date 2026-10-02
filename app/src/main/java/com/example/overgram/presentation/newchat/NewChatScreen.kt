@@ -1,5 +1,6 @@
 package com.example.overgram.presentation.newchat
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,8 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -53,7 +56,7 @@ import com.example.overgram.R
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
-import com.example.overgram.presentation.chat.PrivateChatScreen
+import com.example.overgram.presentation.chat.ChatScreen
 import com.example.overgram.presentation.chatlist.presenceText
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.OverGramTopBar
@@ -79,7 +82,7 @@ data object NewChatScreen : Screen {
             val args = state.openChat ?: return@LaunchedEffect
             viewModel.onChatOpened()
             // Replace, so "back" from the chat returns to the chat list.
-            navigator.replace(PrivateChatScreen(args.chatId, args.peerUserId, args.title))
+            navigator.replace(ChatScreen(args.chatId, args.type, args.peerUserId, args.title))
         }
 
         LaunchedEffect(state.isSessionEnded) {
@@ -92,7 +95,8 @@ data object NewChatScreen : Screen {
             onQueryChange = viewModel::onQueryChange,
             onUserClick = viewModel::onUserClick,
             onErrorShown = viewModel::onErrorShown,
-            onEditUsername = viewModel::openUsernameDialog
+            onEditUsername = viewModel::openUsernameDialog,
+            onNewGroup = { navigator.push(SelectMembersScreen()) }
         )
 
         if (state.isUsernameDialogOpen) {
@@ -113,7 +117,8 @@ fun NewChatContent(
     onQueryChange: (String) -> Unit,
     onUserClick: (UserProfile) -> Unit,
     onErrorShown: () -> Unit,
-    onEditUsername: () -> Unit
+    onEditUsername: () -> Unit,
+    onNewGroup: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarMessage = state.error?.let { authErrorMessage(it) }
@@ -164,6 +169,8 @@ fun NewChatContent(
 
             MyUsernameRow(me = state.me, onEdit = onEditUsername)
             HorizontalDivider(color = DividerColor)
+            NewGroupRow(onClick = onNewGroup)
+            HorizontalDivider(color = DividerColor)
 
             when {
                 state.results.isNotEmpty() -> LazyColumn(Modifier.fillMaxSize()) {
@@ -181,6 +188,32 @@ fun NewChatContent(
                 state.query.isBlank() -> HintText(stringResource(R.string.new_chat_hint))
             }
         }
+    }
+}
+
+@Composable
+private fun NewGroupRow(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SpacingMd),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(Dimens.AvatarMedium)
+                .background(PrimaryViolet, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.GroupAdd, contentDescription = null, tint = TextPrimary)
+        }
+        Spacer(Modifier.width(Dimens.SpacingLg))
+        Text(
+            text = stringResource(R.string.new_group),
+            style = MaterialTheme.typography.titleMedium,
+            color = PrimaryViolet
+        )
     }
 }
 
@@ -338,7 +371,7 @@ fun NewChatContentPreview() {
                     UserProfile("u3", "Demo User 3", "demo_user_3", null, isOnline = false, lastSeenAt = null)
                 )
             ),
-            onBack = {}, onQueryChange = {}, onUserClick = {}, onErrorShown = {}, onEditUsername = {}
+            onBack = {}, onQueryChange = {}, onUserClick = {}, onErrorShown = {}, onEditUsername = {}, onNewGroup = {}
         )
     }
 }

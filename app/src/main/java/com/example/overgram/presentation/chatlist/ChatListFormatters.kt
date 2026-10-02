@@ -9,6 +9,8 @@ import com.example.overgram.R
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.MessageType
+import com.example.overgram.domain.model.SystemEvent
+import com.example.overgram.domain.model.SystemEventKind
 import com.example.overgram.domain.model.UserProfile
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -39,15 +41,71 @@ fun chatSubtitle(chat: ChatSummary, currentUserId: String?): String {
         MessageType.VIDEO -> message.body.withPrefix(stringResource(R.string.chats_preview_video))
         MessageType.FILE -> message.body.withPrefix(stringResource(R.string.chats_preview_file))
         // SYSTEM bodies are structured JSON, never display text.
-        MessageType.SYSTEM -> return stringResource(R.string.chats_preview_system)
+        MessageType.SYSTEM -> return message.systemEvent?.let { event ->
+            val sender = chat.lastMessageSender
+            systemEventText(event, currentUserId) { id -> sender?.takeIf { it.id == id } }
+        } ?: stringResource(R.string.chats_preview_system)
         MessageType.UNKNOWN -> stringResource(R.string.chats_preview_unsupported)
     }.replace('\n', ' ')
 
-    return if (currentUserId != null && message.senderId == currentUserId) {
-        stringResource(R.string.chats_preview_you, text)
-    } else {
-        text
+    return when {
+        currentUserId != null && message.senderId == currentUserId ->
+            stringResource(R.string.chats_preview_you, text)
+        chat.type == ChatType.GROUP && chat.lastMessageSender != null ->
+            stringResource(R.string.chats_preview_sender, chat.lastMessageSender.displayName, text)
+        else -> text
     }
+}
+
+/**
+ * Renders a group SYSTEM event ("Ada added Bob and Carl"). [profileOf] returns what's known
+ * about a user; when some targets are unknown the text falls back to a count.
+ */
+@Composable
+fun systemEventText(
+    event: SystemEvent,
+    currentUserId: String?,
+    profileOf: (String) -> UserProfile?
+): String {
+    val actor = personName(event.actorId, currentUserId, profileOf)
+    val targets = event.targetUserIds
+    val targetNames = targets.map { id ->
+        if (id == currentUserId) stringResource(R.string.system_you_object) else profileOf(id)?.displayName
+    }
+    val targetsText = if (targetNames.all { it != null }) {
+        joinNames(targetNames.filterNotNull())
+    } else {
+        pluralStringResource(R.plurals.system_members_count, targets.size, targets.size)
+    }
+    val firstTarget = targets.firstOrNull()?.let { personName(it, currentUserId, profileOf) } ?: actor
+
+    return when (event.kind) {
+        SystemEventKind.GROUP_CREATED -> event.title?.let {
+            stringResource(R.string.system_group_created_titled, actor, it)
+        } ?: stringResource(R.string.system_group_created, actor)
+        SystemEventKind.MEMBERS_ADDED -> stringResource(R.string.system_members_added, actor, targetsText)
+        SystemEventKind.MEMBER_REMOVED -> stringResource(R.string.system_member_removed, actor, targetsText)
+        SystemEventKind.MEMBER_LEFT -> stringResource(R.string.system_member_left, firstTarget)
+        SystemEventKind.OWNER_CHANGED -> stringResource(R.string.system_owner_changed, firstTarget)
+        SystemEventKind.ROLE_CHANGED -> stringResource(R.string.system_role_changed, actor, targetsText)
+        SystemEventKind.UNKNOWN -> stringResource(R.string.chats_preview_system)
+    }
+}
+
+/** Subject form: "You" for the current user, the display name, or "Someone". */
+@Composable
+private fun personName(userId: String, currentUserId: String?, profileOf: (String) -> UserProfile?): String =
+    when (userId) {
+        currentUserId -> stringResource(R.string.system_you_subject)
+        else -> profileOf(userId)?.displayName ?: stringResource(R.string.system_someone)
+    }
+
+/** "Ada", "Ada and Bob", "Ada, Bob and Carl". */
+@Composable
+fun joinNames(names: List<String>): String = when (names.size) {
+    0 -> ""
+    1 -> names.single()
+    else -> stringResource(R.string.names_and, names.dropLast(1).joinToString(", "), names.last())
 }
 
 private fun String?.withPrefix(label: String): String =

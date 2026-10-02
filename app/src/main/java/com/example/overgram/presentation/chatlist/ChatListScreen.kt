@@ -1,14 +1,17 @@
 package com.example.overgram.presentation.chatlist
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,7 +20,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -35,6 +40,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +53,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,9 +74,9 @@ import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.presentation.auth.PhoneEntryScreen
-import com.example.overgram.presentation.chat.PrivateChatScreen
-import com.example.overgram.presentation.newchat.NewChatScreen
 import com.example.overgram.presentation.auth.authErrorMessage
+import com.example.overgram.presentation.chat.ChatScreen
+import com.example.overgram.presentation.newchat.NewChatScreen
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.ChatListItem
 import com.example.overgram.ui.components.OverGramBottomBar
@@ -104,16 +114,14 @@ data object ChatListScreen : Screen {
             onLogout = viewModel::logout,
             onNewChat = { navigator.push(NewChatScreen) },
             onChatClick = { chat ->
-                // Group chats get their own screen (separate card on the board).
-                if (chat.type == ChatType.DIRECT) {
-                    navigator.push(
-                        PrivateChatScreen(
-                            chatId = chat.id,
-                            peerUserId = chat.peer?.id,
-                            title = chat.peer?.displayName.orEmpty()
-                        )
+                navigator.push(
+                    ChatScreen(
+                        chatId = chat.id,
+                        type = chat.type,
+                        peerUserId = chat.peer?.id,
+                        title = (if (chat.type == ChatType.GROUP) chat.title else chat.peer?.displayName).orEmpty()
                     )
-                }
+                )
             }
         )
     }
@@ -133,6 +141,14 @@ fun ChatListContent(
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    var isSearchOpen by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    BackHandler(enabled = isSearchOpen) {
+        isSearchOpen = false
+        searchQuery = ""
+    }
+    val visibleChats = remember(state.chats, searchQuery) { state.chats.filterByQuery(searchQuery) }
+
     // With a list on screen, errors are transient: show them as a snackbar.
     val snackbarError = state.error?.takeIf { state.chats.isNotEmpty() }
     val snackbarMessage = snackbarError?.let { authErrorMessage(it) }
@@ -147,19 +163,30 @@ fun ChatListContent(
         modifier = Modifier.fillMaxSize(),
         containerColor = BackgroundDark,
         topBar = {
-            OverGramTopBar(
-                title = stringResource(R.string.app_name),
-                actions = {
-                    IconButton(onClick = {}) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = stringResource(R.string.chats_search),
-                            tint = TextPrimary
-                        )
+            if (isSearchOpen) {
+                SearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    onClose = {
+                        isSearchOpen = false
+                        searchQuery = ""
                     }
-                    OverflowMenu(onLogout = onLogout)
-                }
-            )
+                )
+            } else {
+                OverGramTopBar(
+                    title = stringResource(R.string.app_name),
+                    actions = {
+                        IconButton(onClick = { isSearchOpen = true }) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = stringResource(R.string.chats_search),
+                                tint = TextPrimary
+                            )
+                        }
+                        OverflowMenu(onLogout = onLogout)
+                    }
+                )
+            }
         },
         bottomBar = {
             OverGramBottomBar(
@@ -192,9 +219,13 @@ fun ChatListContent(
                 .padding(innerPadding)
         ) {
             when {
+                isSearchOpen && searchQuery.isNotBlank() && visibleChats.isEmpty() -> CenteredMessage(
+                    title = stringResource(R.string.chats_search_no_results, searchQuery.trim())
+                )
                 state.chats.isNotEmpty() -> ChatList(
-                    chats = state.chats,
-                    onlineUsers = state.onlineUsers,
+                    chats = visibleChats,
+                    // The "online now" strip is noise while looking for a specific chat.
+                    onlineUsers = if (isSearchOpen) emptyList() else state.onlineUsers,
                     currentUserId = state.currentUserId,
                     onChatClick = onChatClick
                 )
@@ -212,6 +243,71 @@ fun ChatListContent(
                 )
             }
         }
+    }
+}
+
+/**
+ * Local filter over the loaded chats: peer name/username, group title, or last message text.
+ * Matches each word of the query, in any order, case-insensitively.
+ */
+private fun List<ChatSummary>.filterByQuery(query: String): List<ChatSummary> {
+    val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    if (words.isEmpty()) return this
+    return filter { chat ->
+        val haystack = listOfNotNull(
+            chat.title,
+            chat.peer?.displayName,
+            chat.peer?.username,
+            chat.lastMessage?.body?.takeIf { chat.lastMessage.type != MessageType.SYSTEM }
+        ).joinToString(" ").lowercase()
+        words.all { it in haystack }
+    }
+}
+
+@Composable
+private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onClose: () -> Unit) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(Dimens.TopBarHeight)
+            .padding(horizontal = Dimens.SpacingXs),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onClose) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.chats_search_close),
+                tint = TextPrimary
+            )
+        }
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester),
+            placeholder = { Text(stringResource(R.string.chats_search_hint), color = TextSecondary) },
+            singleLine = true,
+            trailingIcon = if (query.isNotEmpty()) {
+                {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = TextSecondary)
+                    }
+                }
+            } else null,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = BackgroundDark,
+                unfocusedContainerColor = BackgroundDark,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                cursorColor = PrimaryViolet
+            )
+        )
     }
 }
 
@@ -259,6 +355,7 @@ private fun ChatList(
                 time = chatTime(chat.lastMessage?.createdAt ?: chat.lastActivityAt),
                 unreadCount = chat.unreadCount,
                 isOnline = chat.peer?.isOnline == true,
+                isMuted = chat.isMuted,
                 onClick = { onChatClick(chat) }
             )
         }
