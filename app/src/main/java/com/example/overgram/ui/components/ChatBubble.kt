@@ -1,5 +1,7 @@
 package com.example.overgram.ui.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,7 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +38,7 @@ import com.example.overgram.R
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.ErrorRed
+import com.example.overgram.ui.theme.GlassTokens
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryVioletLight
 import com.example.overgram.ui.theme.ReceivedBubbleColor
@@ -73,7 +78,9 @@ fun ChatBubble(
     onClick: (() -> Unit)? = null
 ) {
     val bubbleShape = if (isSent) SentBubbleShape else ReceivedBubbleShape
-    val backgroundColor = if (isSent) SentBubbleColor else ReceivedBubbleColor
+    // Sent: a violet gradient. Received: translucent "glass" over the chat backdrop. Both get the
+    // light rim; no per-bubble blur (too costly for a long list), the tint carries the effect.
+    val background: Brush = if (isSent) SentBubbleBrush else SolidColor(ReceivedBubbleColor.copy(alpha = 0.78f))
     val alignment = if (isSent) Alignment.CenterEnd else Alignment.CenterStart
     val metaColor = if (isSent) Color.White.copy(alpha = 0.7f) else TextSecondary
 
@@ -85,9 +92,11 @@ fun ChatBubble(
     ) {
         Surface(
             shape = bubbleShape,
-            color = backgroundColor,
+            color = Color.Transparent,
+            border = BorderStroke(1.dp, GlassTokens.EdgeHighlight),
             modifier = Modifier
                 .widthIn(max = 280.dp)
+                .background(background, bubbleShape)
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
         ) {
             Column(
@@ -202,3 +211,7 @@ fun ChatBubblePreview() {
         }
     }
 }
+
+private val SentBubbleBrush = Brush.linearGradient(
+    listOf(Color(0xFF8B6FF5), SentBubbleColor, Color(0xFF6A4BEA))
+)

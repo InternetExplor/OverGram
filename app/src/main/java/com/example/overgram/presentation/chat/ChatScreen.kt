@@ -73,7 +73,6 @@ import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SystemEvent
 import com.example.overgram.domain.model.SystemEventKind
 import com.example.overgram.domain.model.UserProfile
-import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chatlist.connectionStatusText
@@ -83,15 +82,17 @@ import com.example.overgram.presentation.chatlist.isSameDay
 import com.example.overgram.presentation.chatlist.joinNames
 import com.example.overgram.presentation.chatlist.presenceText
 import com.example.overgram.presentation.chatlist.systemEventText
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.groupinfo.GroupInfoScreen
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.BubbleStatus
 import com.example.overgram.ui.components.ChatBubble
+import com.example.overgram.ui.components.GlassScreen
 import com.example.overgram.ui.components.MessageInputBar
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
@@ -99,6 +100,7 @@ import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
+import com.example.overgram.ui.theme.frosted
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.Calendar
 import kotlin.math.abs
@@ -232,9 +234,9 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
     BackHandler(enabled = isEmojiPanelOpen) { isEmojiPanelOpen = false }
     var isLeaveDialogOpen by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+    GlassScreen(
+        // A little dimmer than the home screens: here the bubbles are the content.
+        backdropIntensity = 0.8f,
         topBar = {
             OverGramTopBar(
                 title = state.title,
@@ -285,13 +287,16 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        Box(
+        // Messages scroll under the glass bars (padding as contentPadding); the other states
+        // are static and simply sit between them.
+        if (state.messages.isNotEmpty()) {
+            MessageList(state = state, actions = actions, contentPadding = innerPadding)
+        } else Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
             when {
-                state.messages.isNotEmpty() -> MessageList(state = state, actions = actions)
                 state.isLoading -> CircularProgressIndicator(
                     color = PrimaryViolet,
                     modifier = Modifier.align(Alignment.Center)
@@ -425,7 +430,7 @@ private fun ChatMenu(state: ChatUiState, actions: ChatActions, onLeave: () -> Un
 }
 
 @Composable
-private fun MessageList(state: ChatUiState, actions: ChatActions) {
+private fun MessageList(state: ChatUiState, actions: ChatActions, contentPadding: PaddingValues) {
     val listState = rememberLazyListState()
     val rows = remember(state.messages, state.isGroup) { buildRows(state.messages, state.isGroup) }
 
@@ -436,7 +441,11 @@ private fun MessageList(state: ChatUiState, actions: ChatActions) {
         state = listState,
         reverseLayout = true,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = Dimens.SpacingSm)
+        // Padding is visual even in a reversed list: top = glass top bar, bottom = input bar.
+        contentPadding = PaddingValues(
+            top = contentPadding.calculateTopPadding() + Dimens.SpacingSm,
+            bottom = contentPadding.calculateBottomPadding() + Dimens.SpacingSm
+        )
     ) {
         items(rows, key = { it.key }, contentType = { it::class }) { row ->
             when (row) {
@@ -569,7 +578,7 @@ private fun CenteredPill(text: String, horizontalPadding: androidx.compose.ui.un
             color = TextSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier
-                .background(SurfaceElevatedDark, RoundedCornerShape(12.dp))
+                .frosted(RoundedCornerShape(12.dp))
                 .padding(horizontal = Dimens.SpacingMd, vertical = Dimens.SpacingXs)
         )
     }

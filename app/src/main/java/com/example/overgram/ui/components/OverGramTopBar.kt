@@ -21,16 +21,20 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.overgram.R
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.LocalHazeState
 import com.example.overgram.ui.theme.OnlineStatusViolet
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
+import com.example.overgram.ui.theme.glass
+import com.example.overgram.ui.theme.hairline
 
 /**
  * Custom TopBar for OverGram screens.
@@ -55,8 +59,15 @@ fun OverGramTopBar(
     highlightSubtitle: Boolean = subtitle.equals("online", ignoreCase = true),
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    // Glass when the screen provides a haze state: content scrolls under the bar, blurred.
+    val hazeState = LocalHazeState.current
+    val barColor = if (hazeState != null) Color.Transparent else BackgroundDark
     TopAppBar(
-        modifier = modifier,
+        modifier = if (hazeState != null) {
+            modifier.glass(hazeState, edge = false).hairline(atBottom = true)
+        } else {
+            modifier
+        },
         title = {
             Column(
                 modifier = if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier
@@ -102,8 +113,8 @@ fun OverGramTopBar(
         },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = BackgroundDark,
-            scrolledContainerColor = BackgroundDark
+            containerColor = barColor,
+            scrolledContainerColor = barColor
         )
     )
 }

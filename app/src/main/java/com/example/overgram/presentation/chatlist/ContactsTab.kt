@@ -35,10 +35,11 @@ import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.ui.components.Avatar
+import com.example.overgram.ui.components.GlassScreen
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
 import com.example.overgram.ui.theme.TextPrimary
@@ -66,16 +67,13 @@ fun ContactsTab(
             )
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+    GlassScreen(
         topBar = { OverGramTopBar(title = stringResource(R.string.tab_contacts)) },
         bottomBar = bottomBar
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            contentPadding = innerPadding,
+            modifier = Modifier.fillMaxSize()
         ) {
             item(key = "find") {
                 FindPeopleRow(onClick = onFindPeople)

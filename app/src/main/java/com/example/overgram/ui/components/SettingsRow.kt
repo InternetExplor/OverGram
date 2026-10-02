@@ -1,5 +1,6 @@
 package com.example.overgram.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.CardShape
 import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.GlassTokens
 import com.example.overgram.ui.theme.IconContainerShape
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
@@ -68,7 +70,9 @@ fun SettingsRow(
             .fillMaxWidth()
             .clip(CardShape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        color = SurfaceDark,
+        // Frosted card: lets the backdrop glow through a little, with a light rim.
+        color = SurfaceDark.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, GlassTokens.EdgeHighlight),
         shape = CardShape
     ) {
         Row(

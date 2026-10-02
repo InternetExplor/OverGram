@@ -61,17 +61,18 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.example.overgram.R
 import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.UserProfile
-import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chat.ChatScreen
 import com.example.overgram.presentation.chatlist.ChatListScreen
 import com.example.overgram.presentation.chatlist.presenceText
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.ui.components.Avatar
+import com.example.overgram.ui.components.GlassScreen
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
 import com.example.overgram.ui.theme.SurfaceElevatedDark
@@ -143,9 +144,7 @@ fun SelectMembersContent(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+    GlassScreen(
         topBar = {
             OverGramTopBar(
                 title = stringResource(if (state.isCreating) R.string.new_group else R.string.add_members_title),

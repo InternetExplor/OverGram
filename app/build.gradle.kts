@@ -82,6 +82,9 @@ dependencies {
     implementation("androidx.room:room-ktx:2.7.2")
     ksp("androidx.room:room-compiler:2.7.2")
 
+    // Haze: backdrop blur for the glass bars (real blur on API 31+, translucent scrim below)
+    implementation("dev.chrisbanes.haze:haze:1.6.10")
+
     // Coil (загрузка изображений/аватаров)
     implementation("io.coil-kt:coil-compose:2.6.0")
 

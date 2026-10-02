@@ -29,6 +29,7 @@ import com.example.overgram.presentation.auth.components.AuthPrimaryButton
 import com.example.overgram.presentation.auth.components.AuthTextAction
 import com.example.overgram.presentation.auth.components.OtpCodeInput
 import com.example.overgram.presentation.chatlist.ChatListScreen
+import com.example.overgram.ui.components.GlassScreen
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
@@ -80,8 +81,7 @@ fun OtpVerifyContent(
     showDebugHints: Boolean = BuildConfig.DEBUG,
     autoFocus: Boolean = true
 ) {
-    Scaffold(
-        containerColor = BackgroundDark,
+    GlassScreen(
         topBar = {
             OverGramTopBar(title = "", onBackClick = onBack)
         }

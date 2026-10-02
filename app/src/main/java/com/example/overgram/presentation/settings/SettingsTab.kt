@@ -52,6 +52,7 @@ import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.common.formatPhone
 import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.ui.components.Avatar
+import com.example.overgram.ui.components.GlassScreen
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.components.SettingsRow
 import com.example.overgram.ui.theme.BackgroundDark
@@ -108,9 +109,7 @@ fun SettingsContent(
     var confirmClearCache by rememberSaveable { mutableStateOf(false) }
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+    GlassScreen(
         topBar = { OverGramTopBar(title = stringResource(R.string.tab_settings)) },
         bottomBar = bottomBar,
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -118,8 +117,9 @@ fun SettingsContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
+                // Inside the scroll, so the settings slide under the glass bars.
+                .padding(innerPadding)
                 .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SpacingSm),
             verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSm)
         ) {

@@ -1,6 +1,8 @@
 package com.example.overgram.presentation.chatlist
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +42,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,8 +53,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -68,25 +75,31 @@ import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.UserProfile
-import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chat.ChatScreen
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.newchat.NewChatScreen
 import com.example.overgram.presentation.profile.EditProfileScreen
 import com.example.overgram.presentation.settings.SettingsTab
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.ChatListItem
+import com.example.overgram.ui.components.GlassScreen
 import com.example.overgram.ui.components.OverGramBottomBar
 import com.example.overgram.ui.components.OverGramBottomTab
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.DividerColor
+import com.example.overgram.ui.theme.GlassTokens
+import com.example.overgram.ui.theme.LocalHazeState
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.PrimaryVioletLight
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
+import com.example.overgram.ui.theme.glass
+import com.example.overgram.ui.theme.hairline
 
 data object ChatListScreen : Screen {
 
@@ -181,9 +194,8 @@ fun ChatListContent(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+    val pullState = rememberPullToRefreshState()
+    GlassScreen(
         topBar = {
             if (isSearchOpen) {
                 SearchBar(
@@ -212,31 +224,30 @@ fun ChatListContent(
             }
         },
         bottomBar = bottomBar,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNewChat,
-                containerColor = PrimaryViolet,
-                contentColor = TextPrimary,
-                shape = CircleShape
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = stringResource(R.string.chats_new_message)
-                )
-            }
-        },
+        floatingActionButton = { GlowFab(onClick = onNewChat) },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         PullToRefreshBox(
             isRefreshing = state.isRefreshing,
             onRefresh = onRefresh,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            state = pullState,
+            modifier = Modifier.fillMaxSize(),
+            // The list starts under the glass top bar; keep the spinner below it.
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullState,
+                    isRefreshing = state.isRefreshing,
+                    color = PrimaryViolet,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = innerPadding.calculateTopPadding())
+                )
+            }
         ) {
             when {
                 isSearchOpen && searchQuery.isNotBlank() && visibleChats.isEmpty() -> CenteredMessage(
-                    title = stringResource(R.string.chats_search_no_results, searchQuery.trim())
+                    title = stringResource(R.string.chats_search_no_results, searchQuery.trim()),
+                    modifier = Modifier.padding(innerPadding)
                 )
                 state.chats.isNotEmpty() -> ChatList(
                     chats = visibleChats,
@@ -246,22 +257,57 @@ fun ChatListContent(
                     currentUserId = state.currentUserId,
                     typing = state.typing,
                     isLive = state.isLive,
+                    contentPadding = innerPadding,
                     onChatClick = onChatClick
                 )
-                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                state.isLoading -> Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator(color = PrimaryViolet)
                 }
                 state.error != null -> CenteredMessage(
                     title = authErrorMessage(state.error),
                     actionLabel = stringResource(R.string.chats_retry),
-                    onAction = onRetry
+                    onAction = onRetry,
+                    modifier = Modifier.padding(innerPadding)
                 )
                 else -> CenteredMessage(
                     title = stringResource(R.string.chats_empty_title),
-                    subtitle = stringResource(R.string.chats_empty_subtitle)
+                    subtitle = stringResource(R.string.chats_empty_subtitle),
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
         }
+    }
+}
+
+/**
+ * The main action stays solid (not glass): it must stand out over anything. A violet gradient
+ * with a soft glow of the same color lifts it off the dark backdrop, where shadows don't show.
+ */
+@Composable
+private fun GlowFab(onClick: () -> Unit) {
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = Color.Transparent,
+        contentColor = TextPrimary,
+        shape = CircleShape,
+        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
+        modifier = Modifier
+            .shadow(18.dp, CircleShape, ambientColor = PrimaryViolet, spotColor = PrimaryViolet)
+            .background(
+                Brush.linearGradient(listOf(PrimaryVioletLight, PrimaryViolet, Color(0xFF5B3FE0))),
+                CircleShape
+            )
+            .border(1.dp, GlassTokens.EdgeHighlight, CircleShape)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Edit,
+            contentDescription = stringResource(R.string.chats_new_message)
+        )
     }
 }
 
@@ -287,9 +333,12 @@ private fun List<ChatSummary>.filterByQuery(query: String): List<ChatSummary> {
 private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onClose: () -> Unit) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    // Same glass as the top bar it replaces, including behind the status bar.
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .glass(LocalHazeState.current, edge = false)
+            .hairline(atBottom = true)
             .statusBarsPadding()
             .height(Dimens.TopBarHeight)
             .padding(horizontal = Dimens.SpacingXs),
@@ -318,8 +367,8 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onClose: (
                 }
             } else null,
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = BackgroundDark,
-                unfocusedContainerColor = BackgroundDark,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 focusedTextColor = TextPrimary,
@@ -337,9 +386,10 @@ private fun ChatList(
     currentUserId: String?,
     typing: Map<String, Set<String>>,
     isLive: Boolean,
+    contentPadding: PaddingValues,
     onChatClick: (ChatSummary) -> Unit
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = contentPadding) {
         if (onlineUsers.isNotEmpty()) {
             item(key = "online", contentType = "online") {
                 OnlineUsersRow(users = onlineUsers)
@@ -419,10 +469,11 @@ private fun CenteredMessage(
     title: String,
     subtitle: String? = null,
     actionLabel: String? = null,
-    onAction: () -> Unit = {}
+    onAction: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(Dimens.SpacingXxl),

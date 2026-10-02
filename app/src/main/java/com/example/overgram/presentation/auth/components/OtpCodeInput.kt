@@ -113,7 +113,7 @@ private fun RowScope.OtpBox(char: Char?, isActive: Boolean, isError: Boolean) {
             .widthIn(max = 52.dp)
             .fillMaxWidth()
             .height(60.dp)
-            .background(SurfaceDark, IconContainerShape)
+            .background(SurfaceDark.copy(alpha = 0.75f), IconContainerShape)
             .border(if (isActive || isError) 2.dp else 1.dp, borderColor, IconContainerShape),
         contentAlignment = Alignment.Center
     ) {

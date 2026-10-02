@@ -39,6 +39,7 @@ import com.example.overgram.presentation.auth.components.AuthErrorText
 import com.example.overgram.presentation.auth.components.AuthHeader
 import com.example.overgram.presentation.auth.components.AuthPrimaryButton
 import com.example.overgram.presentation.auth.components.AuthTextAction
+import com.example.overgram.ui.components.GlassScreen
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.CardShape
 import com.example.overgram.ui.theme.Dimens
@@ -82,7 +83,7 @@ fun PhoneEntryContent(
 ) {
     val uriHandler = LocalUriHandler.current
 
-    Scaffold(containerColor = BackgroundDark) { innerPadding ->
+    GlassScreen { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -130,10 +131,10 @@ fun PhoneEntryContent(
                 keyboardActions = KeyboardActions(onDone = { onGetCode() }),
                 shape = CardShape,
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = SurfaceDark,
-                    unfocusedContainerColor = SurfaceDark,
-                    disabledContainerColor = SurfaceDark,
-                    errorContainerColor = SurfaceDark,
+                    focusedContainerColor = SurfaceDark.copy(alpha = 0.75f),
+                    unfocusedContainerColor = SurfaceDark.copy(alpha = 0.75f),
+                    disabledContainerColor = SurfaceDark.copy(alpha = 0.75f),
+                    errorContainerColor = SurfaceDark.copy(alpha = 0.75f),
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     disabledIndicatorColor = Color.Transparent,

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -31,9 +32,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,11 +43,17 @@ import com.example.overgram.R
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.InputBarShape
+import com.example.overgram.ui.theme.LocalHazeState
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.PrimaryVioletLight
 import com.example.overgram.ui.theme.SurfaceDark
+import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
+import com.example.overgram.ui.theme.frosted
+import com.example.overgram.ui.theme.glass
+import com.example.overgram.ui.theme.hairline
 
 /**
  * Message input bar featuring attach icon, text field, emoji button, and round violet send button.
@@ -74,8 +82,12 @@ fun MessageInputBar(
     placeholderText: String = "Сообщение..."
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = BackgroundDark
+        // Glass strip when the screen provides a haze state (messages scroll under it).
+        modifier = modifier
+            .fillMaxWidth()
+            .glass(LocalHazeState.current, edge = false)
+            .hairline(atBottom = false),
+        color = if (LocalHazeState.current != null) Color.Transparent else BackgroundDark
     ) {
         Column(modifier = Modifier.navigationBarsPadding()) {
             Row(
@@ -102,7 +114,7 @@ fun MessageInputBar(
                     onValueChange = onValueChange,
                     modifier = Modifier
                         .weight(1f)
-                        .background(SurfaceDark, InputBarShape)
+                        .frosted(InputBarShape, tint = SurfaceElevatedDark.copy(alpha = 0.6f))
                         .onFocusChanged { if (it.isFocused) onInputFocused() },
                     placeholder = {
                         Text(
@@ -123,9 +135,9 @@ fun MessageInputBar(
                         }
                     },
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = SurfaceDark,
-                        unfocusedContainerColor = SurfaceDark,
-                        disabledContainerColor = SurfaceDark,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
                         disabledIndicatorColor = Color.Transparent,
@@ -150,9 +162,11 @@ fun MessageInputBar(
 
                 IconButton(
                     onClick = onSendClick,
-                    modifier = Modifier.size(Dimens.SendButtonSize),
+                    modifier = Modifier
+                        .size(Dimens.SendButtonSize)
+                        .background(SendButtonBrush, CircleShape),
                     colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = PrimaryViolet,
+                        containerColor = Color.Transparent,
                         contentColor = TextPrimary
                     )
                 ) {
@@ -184,3 +198,5 @@ fun MessageInputBarPreview() {
         )
     }
 }
+
+private val SendButtonBrush = Brush.linearGradient(listOf(PrimaryVioletLight, PrimaryViolet))

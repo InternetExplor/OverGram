@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,7 +30,6 @@ import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OnlineStatusViolet
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
-import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
 import kotlin.math.abs
 
@@ -66,7 +67,12 @@ fun Avatar(
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(getAvatarBackgroundColor(name)),
+                // A slight top-light gradient gives the flat circle some depth on the glass UI.
+                .background(
+                    getAvatarBackgroundColor(name).let { base ->
+                        Brush.linearGradient(listOf(lerp(base, Color.White, 0.18f), base))
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -121,7 +127,9 @@ private fun getAvatarBackgroundColor(name: String): Color {
         Color(0xFF5C6BC0),
         Color(0xFF7E57C2),
         Color(0xFFAB47BC),
-        SurfaceElevatedDark
+        // No near-black entry: it vanished against the dark backdrop.
+        Color(0xFF3F7BD9),
+        Color(0xFF26A69A)
     )
     val index = abs(name.hashCode()) % colors.size
     return colors[index]

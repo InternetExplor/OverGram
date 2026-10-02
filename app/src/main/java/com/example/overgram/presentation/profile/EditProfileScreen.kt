@@ -60,10 +60,11 @@ import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.common.formatPhone
 import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.ui.components.Avatar
+import com.example.overgram.ui.components.GlassScreen
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.PrimaryViolet
@@ -122,9 +123,7 @@ fun EditProfileContent(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+    GlassScreen(
         topBar = {
             OverGramTopBar(
                 title = stringResource(R.string.profile_title),
