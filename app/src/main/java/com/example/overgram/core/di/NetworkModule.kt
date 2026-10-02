@@ -2,7 +2,9 @@ package com.example.overgram.core.di
 
 import com.example.overgram.BuildConfig
 import com.example.overgram.core.network.AuthInterceptor
+import com.example.overgram.core.network.TokenAuthenticator
 import com.example.overgram.data.remote.api.AuthApi
+import com.example.overgram.data.remote.api.ChatApi
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -25,11 +27,15 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient =
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor,
+        tokenAuthenticator: TokenAuthenticator
+    ): OkHttpClient =
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
+            .authenticator(tokenAuthenticator)
             .apply {
                 if (BuildConfig.DEBUG) {
                     addInterceptor(
@@ -54,4 +60,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideChatApi(retrofit: Retrofit): ChatApi = retrofit.create(ChatApi::class.java)
 }

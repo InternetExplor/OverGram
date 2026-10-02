@@ -39,4 +39,34 @@
     <string name="auth_error_service_unavailable">The service is temporarily unavailable. Try again shortly.</string>
     <string name="auth_error_network">No connection. Check your internet and try again.</string>
     <string name="auth_error_unknown">Something went wrong. Please try again.</string>
+
+    <!-- Chat list -->
+    <string name="chats_search">Search</string>
+    <string name="chats_more_options">More options</string>
+    <string name="chats_logout">Log out</string>
+    <string name="chats_new_message">New message</string>
+    <string name="chats_online_now">Online now</string>
+    <string name="chats_empty_title">No chats yet</string>
+    <string name="chats_empty_subtitle">Start a conversation and it will show up here.</string>
+    <string name="chats_retry">Retry</string>
+    <string name="chats_unknown_user">Unknown user</string>
+    <string name="chats_untitled_group">Group</string>
+    <string name="chats_preview_you">You: %1$s</string>
+    <string name="chats_preview_photo">Photo</string>
+    <string name="chats_preview_video">Video</string>
+    <string name="chats_preview_file">File</string>
+    <string name="chats_preview_system">Group updated</string>
+    <string name="chats_preview_deleted">Message deleted</string>
+    <string name="chats_preview_unsupported">Message</string>
+    <string name="chats_preview_no_messages">No messages yet</string>
+    <string name="presence_online">online</string>
+    <string name="presence_last_seen_recently">last seen recently</string>
+    <string name="presence_last_seen_just_now">last seen just now</string>
+    <plurals name="presence_last_seen_minutes">
+        <item quantity="one">last seen %1$d minute ago</item>
+        <item quantity="other">last seen %1$d minutes ago</item>
+    </plurals>
+    <string name="presence_last_seen_today">last seen at %1$s</string>
+    <string name="presence_last_seen_yesterday">last seen yesterday at %1$s</string>
+    <string name="presence_last_seen_date">last seen %1$s</string>
 </resources>
