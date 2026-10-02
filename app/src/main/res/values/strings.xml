@@ -1,3 +1,72 @@
 <resources>
     <string name="app_name">OverGram</string>
+
+    <!-- Auth: phone entry -->
+    <string name="auth_phone_title">Your phone number</string>
+    <string name="auth_phone_subtitle">We\'ll send you a code to confirm it.</string>
+    <string name="auth_phone_placeholder">90 123 45 67</string>
+    <string name="auth_get_code">Get code</string>
+    <string name="auth_get_code_countdown">Get code in %1$ds</string>
+    <string name="auth_debug_use_test_number">Debug: use test number (+998 90 000 00 01)</string>
+
+    <!-- Auth: OTP -->
+    <string name="auth_otp_title">Enter code</string>
+    <string name="auth_otp_subtitle">We sent a code to %1$s</string>
+    <string name="auth_otp_boxes_description">Verification code, %1$d digits</string>
+    <string name="auth_verify">Verify</string>
+    <string name="auth_resend_code">Resend code</string>
+    <string name="auth_resend_code_countdown">Resend code in %1$ds</string>
+    <string name="auth_request_new_code">Request new code</string>
+    <string name="auth_request_new_code_countdown">Request new code in %1$ds</string>
+    <string name="auth_change_number">Change number</string>
+    <string name="auth_debug_fill_code">Debug: fill test code 11111</string>
+    <string name="auth_back">Back</string>
+
+    <!-- Auth: errors -->
+    <string name="auth_error_invalid_code">Incorrect code. Please try again.</string>
+    <plurals name="auth_error_invalid_code_remaining">
+        <item quantity="one">Incorrect code. %1$d attempt left.</item>
+        <item quantity="other">Incorrect code. %1$d attempts left.</item>
+    </plurals>
+    <string name="auth_error_code_expired">This code has expired. Request a new code to continue.</string>
+    <string name="auth_error_otp_locked">Too many wrong attempts — this code is locked. Request a new code to continue.</string>
+    <string name="auth_error_rate_limited">Too many requests. Try again in %1$ds.</string>
+    <string name="auth_error_rate_limited_later">Too many requests. Please try again later.</string>
+    <string name="auth_error_telegram_not_linked">This number isn\'t linked to Telegram yet. Open the bot, press Start and share your contact, then request the code again.</string>
+    <string name="auth_open_telegram_bot">Open Telegram bot</string>
+    <string name="auth_error_validation">Please check the phone number and try again.</string>
+    <string name="auth_error_session_ended">Your session has ended. Please log in again.</string>
+    <string name="auth_error_service_unavailable">The service is temporarily unavailable. Try again shortly.</string>
+    <string name="auth_error_network">No connection. Check your internet and try again.</string>
+    <string name="auth_error_unknown">Something went wrong. Please try again.</string>
+
+    <!-- Chat list -->
+    <string name="chats_search">Search</string>
+    <string name="chats_more_options">More options</string>
+    <string name="chats_logout">Log out</string>
+    <string name="chats_new_message">New message</string>
+    <string name="chats_online_now">Online now</string>
+    <string name="chats_empty_title">No chats yet</string>
+    <string name="chats_empty_subtitle">Start a conversation and it will show up here.</string>
+    <string name="chats_retry">Retry</string>
+    <string name="chats_unknown_user">Unknown user</string>
+    <string name="chats_untitled_group">Group</string>
+    <string name="chats_preview_you">You: %1$s</string>
+    <string name="chats_preview_photo">Photo</string>
+    <string name="chats_preview_video">Video</string>
+    <string name="chats_preview_file">File</string>
+    <string name="chats_preview_system">Group updated</string>
+    <string name="chats_preview_deleted">Message deleted</string>
+    <string name="chats_preview_unsupported">Message</string>
+    <string name="chats_preview_no_messages">No messages yet</string>
+    <string name="presence_online">online</string>
+    <string name="presence_last_seen_recently">last seen recently</string>
+    <string name="presence_last_seen_just_now">last seen just now</string>
+    <plurals name="presence_last_seen_minutes">
+        <item quantity="one">last seen %1$d minute ago</item>
+        <item quantity="other">last seen %1$d minutes ago</item>
+    </plurals>
+    <string name="presence_last_seen_today">last seen at %1$s</string>
+    <string name="presence_last_seen_yesterday">last seen yesterday at %1$s</string>
+    <string name="presence_last_seen_date">last seen %1$s</string>
 </resources>
