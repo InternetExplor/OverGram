@@ -41,6 +41,7 @@ import com.example.overgram.ui.theme.TextSecondary
  * @param avatarUrl Optional avatar image URL.
  * @param isOnline Whether to display online indicator dot on the avatar.
  * @param isMuted Shows a muted icon and a grey unread badge.
+ * @param isPreviewHighlighted Shows [lastMessage] in the accent colour (e.g. "typing…").
  * @param onClick Click callback when tapping the chat item.
  */
 @Composable
@@ -53,6 +54,7 @@ fun ChatListItem(
     avatarUrl: String? = null,
     isOnline: Boolean = false,
     isMuted: Boolean = false,
+    isPreviewHighlighted: Boolean = false,
     onClick: () -> Unit = {}
 ) {
     Surface(
@@ -104,7 +106,7 @@ fun ChatListItem(
                 Text(
                     text = lastMessage,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
+                    color = if (isPreviewHighlighted) PrimaryViolet else TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

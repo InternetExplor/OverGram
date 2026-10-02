@@ -40,6 +40,7 @@ import com.example.overgram.ui.theme.TextSecondary
  * @param onBackClick Navigation back click listener. If provided, back button is shown.
  * @param leadContent Optional composable content displayed before title (e.g. Chat Avatar).
  * @param onTitleClick Makes the title clickable, e.g. to open chat info.
+ * @param highlightSubtitle Accent colour for the subtitle ("online", "typing…").
  * @param actions Action icons displayed on the right side of the top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +52,7 @@ fun OverGramTopBar(
     onBackClick: (() -> Unit)? = null,
     leadContent: (@Composable () -> Unit)? = null,
     onTitleClick: (() -> Unit)? = null,
+    highlightSubtitle: Boolean = subtitle.equals("online", ignoreCase = true),
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
@@ -70,7 +72,7 @@ fun OverGramTopBar(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (subtitle.equals("online", ignoreCase = true)) OnlineStatusViolet else TextSecondary,
+                        color = if (highlightSubtitle) OnlineStatusViolet else TextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

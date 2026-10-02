@@ -2,6 +2,7 @@ package com.example.overgram.core.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.overgram.data.local.prefs.SyncPreferences
 import com.example.overgram.data.local.prefs.TokenPreferences
 import dagger.Module
 import dagger.Provides
@@ -29,4 +30,9 @@ object StorageModule {
     @Singleton
     fun provideTokenPreferences(@AuthPrefs prefs: SharedPreferences): TokenPreferences =
         TokenPreferences(prefs)
+
+    @Provides
+    @Singleton
+    fun provideSyncPreferences(@AuthPrefs prefs: SharedPreferences): SyncPreferences =
+        SyncPreferences(prefs)
 }

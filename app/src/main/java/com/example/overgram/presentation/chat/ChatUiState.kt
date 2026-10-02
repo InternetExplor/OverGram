@@ -16,7 +16,8 @@ data class ChatArgs(
     val title: String
 )
 
-enum class OutgoingState { Sending, Sent, Failed }
+/** [Read]: some other member has read up to this message. */
+enum class OutgoingState { Sending, Sent, Read, Failed }
 
 /**
  * One bubble. Confirmed messages have a [serverSeq]; a message still being sent (or that
@@ -45,6 +46,8 @@ data class ChatUiState(
     /** DIRECT only. */
     val peer: UserProfile? = null,
     val isMuted: Boolean = false,
+    /** Other members typing right now. */
+    val typingUserIds: Set<String> = emptySet(),
     /** Newest first, matching the reversed message list. */
     val messages: List<ChatMessageItem> = emptyList(),
     /** Senders and users mentioned by system events, by id. */

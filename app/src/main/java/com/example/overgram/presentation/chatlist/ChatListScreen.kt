@@ -70,6 +70,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.example.overgram.R
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.UserProfile
@@ -175,6 +176,10 @@ fun ChatListContent(
             } else {
                 OverGramTopBar(
                     title = stringResource(R.string.app_name),
+                    // Like Telegram: say so while live updates aren't flowing.
+                    subtitle = if (state.connectionState != ConnectionState.Connected) {
+                        stringResource(R.string.connection_connecting)
+                    } else null,
                     actions = {
                         IconButton(onClick = { isSearchOpen = true }) {
                             Icon(
@@ -227,6 +232,7 @@ fun ChatListContent(
                     // The "online now" strip is noise while looking for a specific chat.
                     onlineUsers = if (isSearchOpen) emptyList() else state.onlineUsers,
                     currentUserId = state.currentUserId,
+                    typing = state.typing,
                     onChatClick = onChatClick
                 )
                 state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -340,6 +346,7 @@ private fun ChatList(
     chats: List<ChatSummary>,
     onlineUsers: List<UserProfile>,
     currentUserId: String?,
+    typing: Map<String, Set<String>>,
     onChatClick: (ChatSummary) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -349,9 +356,15 @@ private fun ChatList(
             }
         }
         items(chats, key = { it.id }, contentType = { "chat" }) { chat ->
+            val typingNow = typing[chat.id].orEmpty()
             ChatListItem(
                 name = chatTitle(chat),
-                lastMessage = chatSubtitle(chat, currentUserId),
+                lastMessage = if (typingNow.isNotEmpty()) {
+                    stringResource(R.string.typing_short)
+                } else {
+                    chatSubtitle(chat, currentUserId)
+                },
+                isPreviewHighlighted = typingNow.isNotEmpty(),
                 time = chatTime(chat.lastMessage?.createdAt ?: chat.lastActivityAt),
                 unreadCount = chat.unreadCount,
                 isOnline = chat.peer?.isOnline == true,

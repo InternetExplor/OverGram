@@ -93,6 +93,16 @@
     <string name="presence_last_seen_date">last seen %1$s</string>
 
     <string name="action_back">Back</string>
+
+    <!-- Realtime -->
+    <string name="connection_connecting">Connecting…</string>
+    <string name="typing_short">typing…</string>
+    <string name="typing_one">%1$s is typing…</string>
+    <string name="typing_two">%1$s and %2$s are typing…</string>
+    <plurals name="typing_many">
+        <item quantity="one">%1$d person is typing…</item>
+        <item quantity="other">%1$d people are typing…</item>
+    </plurals>
     <string name="action_save">Save</string>
     <string name="action_cancel">Cancel</string>
 

@@ -1,6 +1,9 @@
 package com.example.overgram.data.repository
 
 import com.example.overgram.data.local.prefs.TokenPreferences
+import com.example.overgram.data.mapper.toDomain
+import com.example.overgram.data.realtime.RealtimeClient
+import com.example.overgram.data.realtime.SendResult
 import com.example.overgram.data.remote.api.ChatApi
 import com.example.overgram.data.remote.dto.AddMembersRequestDto
 import com.example.overgram.data.remote.dto.ChatDto
@@ -8,14 +11,10 @@ import com.example.overgram.data.remote.dto.ChatSettingsRequestDto
 import com.example.overgram.data.remote.dto.CreateGroupRequestDto
 import com.example.overgram.data.remote.dto.DirectChatRequestDto
 import com.example.overgram.data.remote.dto.ErrorDto
-import com.example.overgram.data.remote.dto.MessageDto
-import com.example.overgram.data.remote.dto.MessagePreviewDto
 import com.example.overgram.data.remote.dto.SendMessageRequestDto
 import com.example.overgram.data.remote.dto.SeqCursorDto
-import com.example.overgram.data.remote.dto.SystemBodyDto
 import com.example.overgram.data.remote.dto.UpdateChatRequestDto
 import com.example.overgram.data.remote.dto.UpdateMeRequestDto
-import com.example.overgram.data.remote.dto.UserPublicDto
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatMember
@@ -25,10 +24,8 @@ import com.example.overgram.domain.model.GroupMembers
 import com.example.overgram.domain.model.MemberRole
 import com.example.overgram.domain.model.Message
 import com.example.overgram.domain.model.MessagePage
-import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SentMessage
-import com.example.overgram.domain.model.SystemEvent
 import com.example.overgram.domain.model.SystemEventKind
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.domain.repository.ChatRepository
@@ -51,7 +48,8 @@ import javax.inject.Singleton
 class ChatRepositoryImpl @Inject constructor(
     private val api: ChatApi,
     private val tokenPreferences: TokenPreferences,
-    private val gson: Gson
+    private val gson: Gson,
+    private val realtime: RealtimeClient
 ) : ChatRepository {
 
     /** Last known profile per user, used when a refresh of that profile fails. */
@@ -176,7 +174,7 @@ class ChatRepositoryImpl @Inject constructor(
         call { api.listMessages(chatId, beforeSeq, limit) }.mapNotNull { page ->
             page ?: return@mapNotNull null
             MessagePage(
-                messages = page.messages.orEmpty().mapNotNull { it.toDomain() },
+                messages = page.messages.orEmpty().mapNotNull { it.toDomain(gson) },
                 hasMore = page.hasMore ?: false
             )
         }
@@ -185,8 +183,17 @@ class ChatRepositoryImpl @Inject constructor(
         chatId: String,
         clientMessageId: String,
         text: String
-    ): AuthOutcome<SentMessage> =
-        call {
+    ): AuthOutcome<SentMessage> {
+        // The socket is the fast path; with no answer, REST with the same clientMessageId is
+        // safe because the server deduplicates it (and returns the original result).
+        when (val result = realtime.sendMessage(chatId, clientMessageId, text)) {
+            is SendResult.Acked -> return AuthOutcome.Success(result.sent)
+            is SendResult.Nacked -> if (!result.retryable) {
+                return AuthOutcome.Failure(nackError(result))
+            }
+            null -> Unit
+        }
+        return call {
             api.sendMessage(chatId, SendMessageRequestDto(clientMessageId, MessageType.TEXT.name, text))
         }.mapNotNull { result ->
             SentMessage(
@@ -195,9 +202,20 @@ class ChatRepositoryImpl @Inject constructor(
                 createdAt = result.serverCreatedAt ?: return@mapNotNull null
             )
         }
+    }
+
+    private fun nackError(nack: SendResult.Nacked): AuthError = when (nack.code) {
+        "RATE_LIMITED" -> AuthError.RateLimited()
+        "SERVER_ERROR" -> AuthError.ServiceUnavailable
+        else -> AuthError.Validation(nack.message)
+    }
 
     override suspend fun markRead(chatId: String, upToSeq: Long): AuthOutcome<Unit> =
-        call { api.markRead(chatId, SeqCursorDto(upToSeq)) }.mapNotNull { }
+        if (realtime.sendRead(chatId, upToSeq)) {
+            AuthOutcome.Success(Unit)
+        } else {
+            call { api.markRead(chatId, SeqCursorDto(upToSeq)) }.mapNotNull { }
+        }
 
     override suspend fun searchUsers(query: String): AuthOutcome<List<UserProfile>> =
         call { api.searchUsers(query, SEARCH_LIMIT) }.mapNotNull { result ->
@@ -299,7 +317,7 @@ class ChatRepositoryImpl @Inject constructor(
     private fun ChatDto.toDomain(profiles: Map<String, UserProfile>): ChatSummary? {
         val id = id ?: return null.also { Timber.w("Skipping chat without id") }
         val chatType = if (type == "GROUP") ChatType.GROUP else ChatType.DIRECT
-        val preview = lastMessage?.toDomain()
+        val preview = lastMessage?.toDomain(gson)
         return ChatSummary(
             id = id,
             type = chatType,
@@ -313,61 +331,6 @@ class ChatRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun MessagePreviewDto.toDomain(): MessagePreview? {
-        val messageType = MessageType.entries.firstOrNull { it.name == type } ?: MessageType.UNKNOWN
-        return MessagePreview(
-            senderId = senderId ?: return null,
-            type = messageType,
-            body = body,
-            createdAt = createdAt ?: return null,
-            isDeleted = deletedAt != null,
-            systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(body) else null
-        )
-    }
-
-    private fun MessageDto.toDomain(): Message? {
-        val messageType = MessageType.entries.firstOrNull { it.name == type } ?: MessageType.UNKNOWN
-        return Message(
-            clientMessageId = clientMessageId ?: return null,
-            serverId = serverId ?: return null,
-            serverSeq = serverSeq ?: return null,
-            senderId = senderId ?: return null,
-            type = messageType,
-            body = body,
-            createdAt = createdAt ?: return null,
-            isEdited = editedAt != null,
-            isDeleted = deletedAt != null,
-            systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(body) else null
-        )
-    }
-
-    /** SYSTEM bodies are a JSON *string*; anything unparseable is simply not rendered as an event. */
-    private fun parseSystemEvent(body: String?): SystemEvent? {
-        val dto = try {
-            body?.let { gson.fromJson(it, SystemBodyDto::class.java) }
-        } catch (e: JsonParseException) {
-            Timber.w(e, "Unparseable SYSTEM body")
-            null
-        } ?: return null
-        return SystemEvent(
-            kind = SystemEventKind.entries.firstOrNull { it.name.equals(dto.event, ignoreCase = true) }
-                ?: SystemEventKind.UNKNOWN,
-            actorId = dto.actorId ?: return null,
-            targetUserIds = dto.targetUserIds.orEmpty(),
-            title = dto.title
-        )
-    }
-
-    private fun UserPublicDto.toDomain(): UserProfile? {
-        return UserProfile(
-            id = id ?: return null,
-            displayName = displayName ?: username ?: return null,
-            username = username,
-            avatarMediaId = avatarMediaId,
-            isOnline = online ?: false,
-            lastSeenAt = lastSeenAt
-        )
-    }
 
     private companion object {
         /** Server maximum for `GET /v1/chats`. */

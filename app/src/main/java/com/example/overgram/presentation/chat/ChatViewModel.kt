@@ -6,8 +6,10 @@ import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.Message
 import com.example.overgram.domain.model.MessageType
+import com.example.overgram.domain.model.RealtimeEvent
 import com.example.overgram.domain.usecase.CreateGroupUseCase
 import com.example.overgram.domain.usecase.GetChatUseCase
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
@@ -15,8 +17,12 @@ import com.example.overgram.domain.usecase.GetMessagesUseCase
 import com.example.overgram.domain.usecase.GetUsersUseCase
 import com.example.overgram.domain.usecase.LeaveChatUseCase
 import com.example.overgram.domain.usecase.MarkChatReadUseCase
+import com.example.overgram.domain.usecase.ObserveConnectionStateUseCase
+import com.example.overgram.domain.usecase.ObserveReadCursorsUseCase
+import com.example.overgram.domain.usecase.ObserveRealtimeEventsUseCase
 import com.example.overgram.domain.usecase.RenameGroupUseCase
 import com.example.overgram.domain.usecase.SendTextMessageUseCase
+import com.example.overgram.domain.usecase.SendTypingUseCase
 import com.example.overgram.domain.usecase.SetChatMutedUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -43,6 +49,10 @@ class ChatViewModel @AssistedInject constructor(
     private val setChatMuted: SetChatMutedUseCase,
     private val renameGroup: RenameGroupUseCase,
     private val leaveChat: LeaveChatUseCase,
+    private val sendTyping: SendTypingUseCase,
+    private val observeConnectionState: ObserveConnectionStateUseCase,
+    observeEvents: ObserveRealtimeEventsUseCase,
+    observeReadCursors: ObserveReadCursorsUseCase,
     getCurrentUserId: GetCurrentUserIdUseCase
 ) : ViewModel() {
 
@@ -67,6 +77,15 @@ class ChatViewModel @AssistedInject constructor(
     private var olderJob: Job? = null
     private var newestJob: Job? = null
 
+    /** The screen is started: only then do incoming messages count as read. */
+    private var isVisible = false
+
+    /** Highest seq any other member has read; own messages up to it get the double tick. */
+    private var othersReadUpTo = 0L
+
+    /** userId → job that clears their "typing…". */
+    private val typingTimeouts = HashMap<String, Job>()
+
     private val _uiState = MutableStateFlow(
         ChatUiState(type = args.type, title = args.title, currentUserId = myUserId)
     )
@@ -75,10 +94,32 @@ class ChatViewModel @AssistedInject constructor(
     init {
         loadNewest(initial = true)
         refreshDetails()
+        viewModelScope.launch { observeEvents().collect(::onEvent) }
+        viewModelScope.launch {
+            observeReadCursors(args.chatId).collect { cursors ->
+                val othersMax = cursors.filterKeys { it != myUserId }.values.maxOrNull() ?: 0L
+                if (othersMax > othersReadUpTo) {
+                    othersReadUpTo = othersMax
+                    publish()
+                }
+            }
+        }
+        viewModelScope.launch {
+            var wasConnected = observeConnectionState().value == ConnectionState.Connected
+            observeConnectionState().collect { connection ->
+                val connected = connection == ConnectionState.Connected
+                // Reconnected: the global catch-up replays events, but this chat's newest page
+                // is the cheapest way to be sure nothing on screen is stale.
+                if (connected && !wasConnected) loadNewest(initial = false)
+                wasConnected = connected
+            }
+        }
     }
 
     fun onInputChange(text: String) {
         _uiState.update { it.copy(input = text) }
+        // The server rate-limits relays itself (one per 3 s), so every keystroke can just say so.
+        if (text.isNotBlank()) sendTyping(args.chatId)
     }
 
     fun send() {
@@ -210,24 +251,86 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     /**
-     * Until the WebSocket lands, new messages and chat details (presence, title, mute) are
-     * pulled periodically while the screen is visible.
+     * Screen started. Live changes arrive over the WebSocket; polling is the fallback, frequent
+     * only while the socket is down.
      */
     fun startPolling() {
+        isVisible = true
+        markReadUpToTop() // messages that arrived while in the background
         if (pollingJob?.isActive == true) return
         pollingJob = viewModelScope.launch {
             var tick = 0
             while (isActive) {
-                delay(POLL_INTERVAL_MS)
+                val connected = observeConnectionState().value == ConnectionState.Connected
+                delay(if (connected) POLL_INTERVAL_CONNECTED_MS else POLL_INTERVAL_OFFLINE_MS)
                 loadNewest(initial = false)
-                if (++tick % DETAILS_EVERY_N_POLLS == 0) refreshDetails()
+                if (connected || ++tick % DETAILS_EVERY_N_POLLS == 0) refreshDetails()
             }
         }
     }
 
     fun stopPolling() {
+        isVisible = false
         pollingJob?.cancel()
         pollingJob = null
+    }
+
+    private fun onEvent(event: RealtimeEvent) {
+        when (event) {
+            is RealtimeEvent.MessageNew -> if (event.chatId == args.chatId) {
+                val message = event.message
+                confirmed[message.clientMessageId] = message
+                pending.remove(message.clientMessageId) // our own echo confirms a pending send
+                clearTyping(message.senderId)
+                publish()
+                markReadUpToTop()
+            }
+            is RealtimeEvent.MessageEdited -> if (event.chatId == args.chatId) {
+                updateByServerId(event.serverId) { it.copy(body = event.body, isEdited = true) }
+            }
+            is RealtimeEvent.MessageDeleted -> if (event.chatId == args.chatId) {
+                updateByServerId(event.serverId) { it.copy(isDeleted = true) }
+            }
+            is RealtimeEvent.ChatChanged -> if (event.chatId == args.chatId) refreshDetails()
+            is RealtimeEvent.MemberChanged -> if (event.chatId == args.chatId) refreshDetails()
+            is RealtimeEvent.Presence -> _uiState.update { state ->
+                val peer = state.peer?.takeIf { it.id == event.userId }
+                    ?.copy(isOnline = event.isOnline, lastSeenAt = event.lastSeenAt)
+                val profile = state.profiles[event.userId]
+                    ?.copy(isOnline = event.isOnline, lastSeenAt = event.lastSeenAt)
+                state.copy(
+                    peer = peer ?: state.peer,
+                    profiles = if (profile != null) state.profiles + (event.userId to profile) else state.profiles
+                )
+            }
+            is RealtimeEvent.Typing -> if (event.chatId == args.chatId && event.userId != myUserId) {
+                showTyping(event.userId)
+            }
+            RealtimeEvent.Resynced -> loadNewest(initial = true)
+            RealtimeEvent.SessionEnded -> onError(AuthError.SessionExpired)
+            // Read cursors come through observeReadCursors; delivery ticks aren't shown.
+            is RealtimeEvent.ReadReceipt, is RealtimeEvent.Delivered -> Unit
+        }
+    }
+
+    private fun updateByServerId(serverId: Long, change: (Message) -> Message) {
+        val message = confirmed.values.firstOrNull { it.serverId == serverId } ?: return
+        confirmed[message.clientMessageId] = change(message)
+        publish()
+    }
+
+    private fun showTyping(userId: String) {
+        _uiState.update { it.copy(typingUserIds = it.typingUserIds + userId) }
+        typingTimeouts.remove(userId)?.cancel()
+        typingTimeouts[userId] = viewModelScope.launch {
+            delay(TYPING_TIMEOUT_MS)
+            clearTyping(userId)
+        }
+    }
+
+    private fun clearTyping(userId: String) {
+        typingTimeouts.remove(userId)?.cancel()
+        _uiState.update { it.copy(typingUserIds = it.typingUserIds - userId) }
     }
 
     private fun deliver(item: ChatMessageItem) {
@@ -323,6 +426,7 @@ class ChatViewModel @AssistedInject constructor(
     }
 
     private fun markReadUpToTop() {
+        if (!isVisible) return
         val top = confirmed.values.maxOfOrNull { it.serverSeq } ?: return
         if (top <= lastMarkedReadSeq) return
         lastMarkedReadSeq = top
@@ -372,7 +476,11 @@ class ChatViewModel @AssistedInject constructor(
             isOutgoing = isOwn && type != MessageType.SYSTEM,
             isEdited = isEdited,
             isDeleted = isDeleted,
-            outgoingState = if (isOwn) OutgoingState.Sent else null,
+            outgoingState = when {
+                !isOwn -> null
+                serverSeq <= othersReadUpTo -> OutgoingState.Read
+                else -> OutgoingState.Sent
+            },
             systemEvent = systemEvent
         )
     }
@@ -387,9 +495,15 @@ class ChatViewModel @AssistedInject constructor(
         this == AuthError.SessionExpired || this == AuthError.SessionRevoked
 
     private companion object {
-        const val POLL_INTERVAL_MS = 4_000L
+        const val POLL_INTERVAL_OFFLINE_MS = 4_000L
 
-        /** Presence, title and mute are refreshed every ~16 s. */
+        /** Safety net only: the WebSocket delivers changes as they happen. */
+        const val POLL_INTERVAL_CONNECTED_MS = 60_000L
+
+        /** Clients repeat `typing` every few seconds while typing; silence means they stopped. */
+        const val TYPING_TIMEOUT_MS = 5_000L
+
+        /** While offline, presence, title and mute are refreshed every ~16 s. */
         const val DETAILS_EVERY_N_POLLS = 4
     }
 }

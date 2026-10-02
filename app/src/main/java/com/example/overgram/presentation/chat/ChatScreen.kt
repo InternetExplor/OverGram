@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -236,6 +237,7 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
             OverGramTopBar(
                 title = state.title,
                 subtitle = chatSubtitle(state),
+                highlightSubtitle = state.typingUserIds.isNotEmpty() || state.peer?.isOnline == true,
                 onBackClick = actions.onBack,
                 onTitleClick = if (state.isGroup) actions.onGroupInfo else null,
                 leadContent = {
@@ -337,6 +339,7 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
 /** DIRECT: the peer's presence. GROUP: who's in it, as far as the loaded history tells. */
 @Composable
 private fun chatSubtitle(state: ChatUiState): String? {
+    typingText(state)?.let { return it }
     if (!state.isGroup) return state.peer?.let { presenceText(it) }
     val ids = state.knownMemberIds
     if (ids.isEmpty()) return null
@@ -352,6 +355,20 @@ private fun chatSubtitle(state: ChatUiState): String? {
         stringResource(R.string.chat_members_more, names.joinToString(", "), hidden)
     } else {
         joinNames(names)
+    }
+}
+
+/** "typing…" in a DIRECT chat; "Ada is typing…" / "Ada and Bob are typing…" / "3 people…" in a group. */
+@Composable
+private fun typingText(state: ChatUiState): String? {
+    val ids = state.typingUserIds.toList()
+    if (ids.isEmpty()) return null
+    if (!state.isGroup) return stringResource(R.string.typing_short)
+    val names = ids.map { state.profiles[it]?.displayName ?: stringResource(R.string.system_someone) }
+    return when (names.size) {
+        1 -> stringResource(R.string.typing_one, names[0])
+        2 -> stringResource(R.string.typing_two, names[0], names[1])
+        else -> pluralStringResource(R.plurals.typing_many, names.size, names.size)
     }
 }
 
@@ -485,6 +502,7 @@ private fun MessageRow(item: ChatMessageItem, senderName: String?, onRetryMessag
             status = when (item.outgoingState) {
                 OutgoingState.Sending -> BubbleStatus.Sending
                 OutgoingState.Failed -> BubbleStatus.Failed
+                OutgoingState.Read -> BubbleStatus.Read
                 OutgoingState.Sent, null -> BubbleStatus.Sent
             },
             isEdited = item.isEdited && !item.isDeleted,
