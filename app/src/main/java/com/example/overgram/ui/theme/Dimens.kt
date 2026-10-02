@@ -26,7 +26,7 @@ object Dimens {
     // Badge & Status Indicator sizes
     val OnlineDotSize = 12.dp
     val OnlineDotBorder = 2.dp
-    val UnreadBadgeMinSize = 20.dp
+    val UnreadBadgeMinSize = 22.dp
 
     // Component heights
     val TopBarHeight = 56.dp

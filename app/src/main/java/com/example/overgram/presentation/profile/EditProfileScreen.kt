@@ -66,7 +66,7 @@ import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
 
@@ -132,7 +132,7 @@ fun EditProfileContent(
                 actions = {
                     if (state.isSaving) {
                         CircularProgressIndicator(
-                            color = PrimaryViolet,
+                            color = Accent,
                             strokeWidth = 2.dp,
                             modifier = Modifier
                                 .padding(horizontal = Dimens.SpacingLg)
@@ -142,7 +142,7 @@ fun EditProfileContent(
                         TextButton(onClick = onSave, enabled = state.canSave) {
                             Text(
                                 stringResource(R.string.action_save),
-                                color = if (state.canSave) PrimaryViolet else TextSecondary
+                                color = if (state.canSave) Accent else TextSecondary
                             )
                         }
                     }
@@ -258,7 +258,7 @@ private fun AvatarEditor(state: EditProfileUiState, onPickPhoto: () -> Unit, onR
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .size(32.dp)
-                .background(PrimaryViolet, CircleShape)
+                .background(Accent, CircleShape)
                 .border(2.dp, BackgroundDark, CircleShape),
             contentAlignment = Alignment.Center
         ) {
@@ -296,11 +296,11 @@ private fun AvatarEditor(state: EditProfileUiState, onPickPhoto: () -> Unit, onR
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = TextPrimary,
     unfocusedTextColor = TextPrimary,
-    focusedBorderColor = PrimaryViolet,
+    focusedBorderColor = Accent,
     unfocusedBorderColor = DividerColor,
-    focusedLabelColor = PrimaryViolet,
+    focusedLabelColor = Accent,
     unfocusedLabelColor = TextSecondary,
-    cursorColor = PrimaryViolet
+    cursorColor = Accent
 )
 
 @Preview(showBackground = true)

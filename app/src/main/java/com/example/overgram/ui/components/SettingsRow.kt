@@ -7,106 +7,88 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.CardShape
-import com.example.overgram.ui.theme.Dimens
-import com.example.overgram.ui.theme.IconContainerShape
+import com.example.overgram.ui.theme.DividerColor
+import com.example.overgram.ui.theme.IconSecondary
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
-import com.example.overgram.ui.theme.SurfaceDark
+import com.example.overgram.ui.theme.SectionGap
+import com.example.overgram.ui.theme.SectionHeader
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
 
+/** Where row text starts (and dividers begin), as in Telegram's settings: icon column + gap. */
+private val TextStart = 72.dp
+
 /**
- * Settings menu row with a rounded icon container, title, subtitle, and navigation chevron.
+ * A Telegram settings row: grey glyph, title, optional second line, hairline divider under the
+ * text. No card, no chevron — sections and dividers carry the structure.
  *
- * @param icon Vector icon for the option.
- * @param title Settings option title.
- * @param subtitle Optional description text under the title.
- * @param iconBackgroundColor Background color for the rounded icon container.
- * @param iconTintColor Tint color for the icon.
- * @param titleColor Title colour (e.g. red for a destructive action).
- * @param trailing Replaces the chevron (e.g. a progress indicator).
- * @param onClick Click listener; null makes it an info row (no ripple, no chevron).
+ * @param icon Null for value rows (e.g. the phone number under "Account"), still aligned to text.
+ * @param subtitle Second line (a value or an explanation).
+ * @param titleColor E.g. red for "Log out".
+ * @param trailing E.g. a progress indicator.
+ * @param showDivider False for the last row of a section.
+ * @param onClick Null makes it a non-interactive info row.
  */
 @Composable
 fun SettingsRow(
-    icon: ImageVector,
     title: String,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
     subtitle: String? = null,
-    iconBackgroundColor: Color = PrimaryViolet.copy(alpha = 0.2f),
-    iconTintColor: Color = PrimaryViolet,
     titleColor: Color = TextPrimary,
+    iconTint: Color = IconSecondary,
     trailing: (@Composable () -> Unit)? = null,
-    onClick: (() -> Unit)? = {}
+    showDivider: Boolean = true,
+    onClick: (() -> Unit)? = null
 ) {
-    Surface(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(CardShape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        color = SurfaceDark,
-        shape = CardShape
+            .background(BackgroundDark)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Dimens.ScreenPadding, vertical = 14.dp),
+                .heightIn(min = if (subtitle != null) 64.dp else 52.dp)
+                .padding(start = 22.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(Dimens.SettingsIconContainerSize)
-                    .clip(IconContainerShape)
-                    .background(iconBackgroundColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = iconTintColor,
-                    modifier = Modifier.size(22.dp)
-                )
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(TextStart - 22.dp - 24.dp))
+            } else {
+                Spacer(Modifier.width(TextStart - 22.dp))
             }
-
-            Spacer(modifier = Modifier.width(Dimens.SpacingLg))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = titleColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
                 if (!subtitle.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
@@ -116,47 +98,59 @@ fun SettingsRow(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.width(Dimens.SpacingSm))
-
-            when {
-                trailing != null -> trailing()
-                onClick != null -> Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = TextSecondary
-                )
+            trailing?.let {
+                Spacer(Modifier.width(8.dp))
+                it()
             }
         }
+        if (showDivider) {
+            HorizontalDivider(
+                thickness = 0.5.dp,
+                color = DividerColor,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = TextStart)
+            )
+        }
     }
+}
+
+/** Blue section title ("Account", "Settings") on the list background, as in Telegram. */
+@Composable
+fun SettingsSectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = SectionHeader,
+        modifier = modifier
+            .fillMaxWidth()
+            .background(BackgroundDark)
+            .padding(start = 22.dp, end = 16.dp, top = 14.dp, bottom = 4.dp)
+    )
+}
+
+/** The darker gap between sections. */
+@Composable
+fun SettingsSectionGap(modifier: Modifier = Modifier) {
+    Spacer(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 12.dp)
+            .background(SectionGap)
+    )
 }
 
 @Preview(showBackground = true)
 @Composable
 fun SettingsRowPreview() {
     OverGramTheme {
-        Surface(color = BackgroundDark) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                SettingsRow(
-                    icon = Icons.Default.Notifications,
-                    title = "Уведомления",
-                    subtitle = "Звуки, вибрация, предпросмотр"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                SettingsRow(
-                    icon = Icons.Default.Lock,
-                    title = "Конфиденциальность",
-                    subtitle = "Блокировка, чат, звонки"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                SettingsRow(
-                    icon = Icons.Default.Palette,
-                    title = "Внешний вид",
-                    subtitle = "Тема, акцентный цвет, фон"
-                )
-            }
+        Column {
+            SettingsSectionHeader("Account")
+            SettingsRow(title = "+998 90 000 00 01", subtitle = "Phone", onClick = {})
+            SettingsRow(title = "@tadashi", subtitle = "Username", showDivider = false, onClick = {})
+            SettingsSectionGap()
+            SettingsRow(icon = Icons.Outlined.Person, title = "Edit profile", onClick = {})
+            SettingsRow(icon = Icons.Outlined.Info, title = "Version 1.0", showDivider = false)
         }
     }
 }

@@ -51,7 +51,8 @@ fun chatSubtitle(chat: ChatSummary, currentUserId: String?): String {
     }.replace('\n', ' ')
 
     return when {
-        currentUserId != null && message.senderId == currentUserId ->
+        // Like Telegram: "You:" only in groups; a direct chat shows ticks instead.
+        chat.type == ChatType.GROUP && currentUserId != null && message.senderId == currentUserId ->
             stringResource(R.string.chats_preview_you, text)
         chat.type == ChatType.GROUP && chat.lastMessageSender != null ->
             stringResource(R.string.chats_preview_sender, chat.lastMessageSender.displayName, text)

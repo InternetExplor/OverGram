@@ -1,7 +1,7 @@
 package com.example.overgram.presentation.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,15 +14,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.DataUsage
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -54,11 +52,14 @@ import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.components.SettingsRow
-import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.components.SettingsSectionGap
+import com.example.overgram.ui.components.SettingsSectionHeader
+import com.example.overgram.ui.theme.Accent
+import com.example.overgram.ui.theme.AccentBright
 import com.example.overgram.ui.theme.ErrorRed
+import com.example.overgram.ui.theme.OnlineBlue
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.SectionGap
 import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
@@ -110,7 +111,8 @@ fun SettingsContent(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+        // The darker color shows between sections, like Telegram's settings.
+        containerColor = SectionGap,
         topBar = { OverGramTopBar(title = stringResource(R.string.tab_settings)) },
         bottomBar = bottomBar,
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -120,39 +122,51 @@ fun SettingsContent(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SpacingSm),
-            verticalArrangement = Arrangement.spacedBy(Dimens.SpacingSm)
         ) {
             ProfileHeader(state = state, onClick = onEditProfile, onRetry = onRetry)
 
-            SectionTitle(stringResource(R.string.settings_section_account))
+            val me = state.me
+            if (me != null) {
+                SettingsSectionHeader(stringResource(R.string.settings_section_account))
+                SettingsRow(
+                    title = formatPhone(me.phone),
+                    subtitle = stringResource(R.string.settings_phone_caption)
+                )
+                SettingsRow(
+                    title = me.username?.let { "@$it" } ?: stringResource(R.string.settings_username_none),
+                    subtitle = stringResource(R.string.settings_username_caption),
+                    showDivider = false,
+                    onClick = onEditProfile
+                )
+                SettingsSectionGap()
+            }
+
+            SettingsSectionHeader(stringResource(R.string.settings_section_settings))
             SettingsRow(
-                icon = Icons.Default.Person,
+                icon = Icons.Outlined.Edit,
                 title = stringResource(R.string.settings_edit_profile),
-                subtitle = stringResource(R.string.settings_edit_profile_subtitle),
                 onClick = onEditProfile
             )
-
-            SectionTitle(stringResource(R.string.settings_section_storage))
             SettingsRow(
-                icon = Icons.Default.DeleteSweep,
+                icon = Icons.Outlined.DataUsage,
                 title = stringResource(R.string.settings_clear_cache),
                 subtitle = stringResource(R.string.settings_clear_cache_subtitle),
+                showDivider = false,
                 trailing = if (state.isClearingCache) {
-                    { CircularProgressIndicator(color = PrimaryViolet, strokeWidth = 2.dp, modifier = Modifier.size(20.dp)) }
+                    { CircularProgressIndicator(color = Accent, strokeWidth = 2.dp, modifier = Modifier.size(20.dp)) }
                 } else null,
                 onClick = { confirmClearCache = true }
             )
+            SettingsSectionGap()
 
-            SectionTitle(stringResource(R.string.settings_section_about))
+            SettingsSectionHeader(stringResource(R.string.settings_section_about))
             SettingsRow(
-                icon = Icons.Default.Info,
+                icon = Icons.Outlined.Info,
                 title = stringResource(R.string.app_name),
-                subtitle = stringResource(R.string.settings_app_version, BuildConfig.VERSION_NAME),
-                onClick = null
+                subtitle = stringResource(R.string.settings_app_version, BuildConfig.VERSION_NAME)
             )
             SettingsRow(
-                icon = Icons.Default.Cloud,
+                icon = Icons.Outlined.Cloud,
                 title = stringResource(R.string.settings_server),
                 subtitle = state.serverInfo?.let { info ->
                     stringResource(
@@ -161,22 +175,22 @@ fun SettingsContent(
                         stringResource(if (info.pushEnabled) R.string.settings_push_available else R.string.settings_push_unavailable)
                     )
                 } ?: stringResource(R.string.settings_server_unknown),
-                onClick = null
+                showDivider = false
             )
+            SettingsSectionGap()
 
-            Spacer(Modifier.height(Dimens.SpacingSm))
             SettingsRow(
-                icon = Icons.AutoMirrored.Filled.Logout,
+                icon = Icons.AutoMirrored.Outlined.Logout,
                 title = stringResource(R.string.settings_logout),
                 titleColor = ErrorRed,
-                iconTintColor = ErrorRed,
-                iconBackgroundColor = ErrorRed.copy(alpha = 0.15f),
+                iconTint = ErrorRed,
+                showDivider = false,
                 trailing = if (state.isLoggingOut) {
                     { CircularProgressIndicator(color = ErrorRed, strokeWidth = 2.dp, modifier = Modifier.size(20.dp)) }
                 } else null,
                 onClick = { confirmLogout = true }
             )
-            Spacer(Modifier.height(Dimens.SpacingLg))
+            SettingsSectionGap(Modifier.height(24.dp))
         }
     }
 
@@ -209,20 +223,21 @@ fun SettingsContent(
 @Composable
 private fun ProfileHeader(state: SettingsUiState, onClick: () -> Unit, onRetry: () -> Unit) {
     val me = state.me
+    // Telegram's settings header: the bar color continues down, with photo, name and "online".
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = Dimens.SpacingSm)
+            .background(SurfaceDark)
             .clickable(enabled = me != null, onClick = onClick)
-            .padding(vertical = Dimens.SpacingSm),
+            .padding(start = 18.dp, end = 16.dp, top = 6.dp, bottom = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Avatar(
             name = me?.displayName.orEmpty(),
             imageUrl = mediaUrl(me?.avatarMediaId),
-            size = Dimens.AvatarLarge
+            size = 64.dp
         )
-        Spacer(Modifier.width(Dimens.SpacingLg))
+        Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
             when {
                 me != null -> {
@@ -233,36 +248,20 @@ private fun ProfileHeader(state: SettingsUiState, onClick: () -> Unit, onRetry: 
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (me.phone.isNotEmpty()) {
-                        Text(formatPhone(me.phone), style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                    }
                     Text(
-                        text = me.username?.let { "@$it" } ?: stringResource(R.string.settings_no_username),
+                        text = stringResource(R.string.presence_online),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (me.username == null) PrimaryViolet else TextSecondary
+                        color = OnlineBlue
                     )
                 }
                 state.loadError != null -> {
                     Text(authErrorMessage(state.loadError), style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
-                    TextButton(onClick = onRetry) { Text(stringResource(R.string.chats_retry), color = PrimaryViolet) }
+                    TextButton(onClick = onRetry) { Text(stringResource(R.string.chats_retry), color = AccentBright) }
                 }
-                else -> CircularProgressIndicator(color = PrimaryViolet, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+                else -> CircularProgressIndicator(color = Accent, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
             }
         }
-        if (me != null) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = TextSecondary)
-        }
     }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = PrimaryViolet,
-        modifier = Modifier.padding(top = Dimens.SpacingMd, start = Dimens.SpacingXs)
-    )
 }
 
 @Composable

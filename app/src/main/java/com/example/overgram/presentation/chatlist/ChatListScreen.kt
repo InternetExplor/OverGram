@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -77,6 +78,7 @@ import com.example.overgram.presentation.profile.EditProfileScreen
 import com.example.overgram.presentation.settings.SettingsTab
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.ChatListItem
+import com.example.overgram.ui.components.ListMessageStatus
 import com.example.overgram.ui.components.OverGramBottomBar
 import com.example.overgram.ui.components.OverGramBottomTab
 import com.example.overgram.ui.components.OverGramTopBar
@@ -84,7 +86,7 @@ import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
 
@@ -215,7 +217,7 @@ fun ChatListContent(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNewChat,
-                containerColor = PrimaryViolet,
+                containerColor = Accent,
                 contentColor = TextPrimary,
                 shape = CircleShape
             ) {
@@ -249,7 +251,7 @@ fun ChatListContent(
                     onChatClick = onChatClick
                 )
                 state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PrimaryViolet)
+                    CircularProgressIndicator(color = Accent)
                 }
                 state.error != null -> CenteredMessage(
                     title = authErrorMessage(state.error),
@@ -324,7 +326,7 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onClose: (
                 unfocusedIndicatorColor = Color.Transparent,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                cursorColor = PrimaryViolet
+                cursorColor = Accent
             )
         )
     }
@@ -345,7 +347,7 @@ private fun ChatList(
                 OnlineUsersRow(users = onlineUsers)
             }
         }
-        items(chats, key = { it.id }, contentType = { "chat" }) { chat ->
+        itemsIndexed(chats, key = { _, chat -> chat.id }, contentType = { _, _ -> "chat" }) { index, chat ->
             val typingNow = typing[chat.id].orEmpty()
             ChatListItem(
                 name = chatTitle(chat),
@@ -360,6 +362,10 @@ private fun ChatList(
                 unreadCount = chat.unreadCount,
                 isOnline = isLive && chat.peer?.isOnline == true,
                 isMuted = chat.isMuted,
+                ownMessageStatus = chat.lastMessage
+                    ?.takeIf { it.senderId == currentUserId && it.type != MessageType.SYSTEM && !it.isDeleted }
+                    ?.let { ListMessageStatus.Sent },
+                showDivider = index != chats.lastIndex,
                 onClick = { onChatClick(chat) }
             )
         }
@@ -447,7 +453,7 @@ private fun CenteredMessage(
         if (actionLabel != null) {
             Spacer(Modifier.height(Dimens.SpacingLg))
             TextButton(onClick = onAction) {
-                Text(actionLabel, color = PrimaryViolet)
+                Text(actionLabel, color = Accent)
             }
         }
     }

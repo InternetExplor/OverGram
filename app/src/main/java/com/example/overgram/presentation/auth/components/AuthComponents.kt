@@ -30,7 +30,7 @@ import com.example.overgram.ui.theme.AvatarShape
 import com.example.overgram.ui.theme.CardShape
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.ErrorRed
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
@@ -50,7 +50,7 @@ fun AuthHeader(
             modifier = Modifier
                 .size(Dimens.AvatarExtraLarge)
                 .clip(AvatarShape)
-                .background(PrimaryViolet),
+                .background(Accent),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -94,7 +94,7 @@ fun AuthPrimaryButton(
             .height(52.dp),
         shape = CardShape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = PrimaryViolet,
+            containerColor = Accent,
             contentColor = TextPrimary,
             disabledContainerColor = SurfaceElevatedDark,
             disabledContentColor = TextSecondary
@@ -128,7 +128,7 @@ fun AuthTextAction(
         Text(
             text = text,
             style = MaterialTheme.typography.titleSmall,
-            color = if (enabled) PrimaryViolet else TextSecondary
+            color = if (enabled) Accent else TextSecondary
         )
     }
 }

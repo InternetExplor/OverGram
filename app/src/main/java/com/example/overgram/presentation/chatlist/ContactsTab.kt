@@ -36,11 +36,12 @@ import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.OverGramTopBar
+import com.example.overgram.ui.theme.AccentBright
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
 
@@ -113,17 +114,16 @@ private fun FindPeopleRow(onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(Dimens.AvatarMedium)
-                .background(PrimaryViolet, CircleShape),
+                .size(Dimens.AvatarMedium),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.PersonSearch, contentDescription = null, tint = TextPrimary)
+            Icon(Icons.Default.PersonSearch, contentDescription = null, tint = AccentBright)
         }
         Spacer(Modifier.width(Dimens.SpacingLg))
         Text(
             text = stringResource(R.string.contacts_find_people),
             style = MaterialTheme.typography.titleMedium,
-            color = PrimaryViolet
+            color = AccentBright
         )
     }
 }
@@ -157,7 +157,7 @@ private fun ContactRow(peer: UserProfile, isLive: Boolean, onClick: () -> Unit) 
                 // Offline the last known presence is stale: show the username instead.
                 text = if (isLive) presenceText(peer) else peer.username?.let { "@$it" }.orEmpty(),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (online) PrimaryViolet else TextSecondary,
+                color = if (online) Accent else TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

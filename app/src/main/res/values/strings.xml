@@ -110,11 +110,12 @@
     <string name="contacts_empty">People you chat with appear here. Use “Find people” to start a conversation.</string>
 
     <!-- Settings -->
-    <string name="settings_no_username">Set a username</string>
     <string name="settings_section_account">Account</string>
+    <string name="settings_phone_caption">Phone</string>
+    <string name="settings_username_caption">Username</string>
+    <string name="settings_username_none">None</string>
+    <string name="settings_section_settings">Settings</string>
     <string name="settings_edit_profile">Edit profile</string>
-    <string name="settings_edit_profile_subtitle">Name, username and photo</string>
-    <string name="settings_section_storage">Data and storage</string>
     <string name="settings_clear_cache">Clear cache</string>
     <string name="settings_clear_cache_subtitle">Free up space. Chats and history download again when you open them.</string>
     <string name="settings_clear_cache_confirm_title">Clear cache?</string>
@@ -212,7 +213,7 @@
     <string name="username_invalid">Use 3–32 characters: letters, digits and _</string>
 
     <!-- Private chat -->
-    <string name="chat_input_placeholder">Message…</string>
+    <string name="chat_input_placeholder">Message</string>
     <string name="input_attach">Attach file</string>
     <string name="input_emoji">Emoji</string>
     <string name="input_show_keyboard">Show keyboard</string>

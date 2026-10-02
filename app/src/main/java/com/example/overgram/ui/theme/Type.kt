@@ -7,80 +7,69 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * OverGram Material 3 Typography Scale tuned for a messenger.
- * Uses default system font without external dependencies.
+ * Telegram-like type scale: Roboto (system default), Medium for names and titles — Telegram
+ * never uses SemiBold/Bold in lists — and slightly larger body text than stock Material.
  */
 val OverGramTypography = Typography(
-    // Large top bar titles / Main screen titles (e.g. "OverGram")
+    // Top bar titles ("OverGram", chat name)
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Medium,
         fontSize = 20.sp,
-        lineHeight = 26.sp,
-        letterSpacing = 0.sp
+        lineHeight = 24.sp
     ),
-    // Chat list item titles / Card headers
+    // Chat names in the list, settings row titles
     titleMedium = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 17.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.15.sp
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        lineHeight = 22.sp
     ),
-    // Section headers / Subtitles in settings
     titleSmall = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
+        lineHeight = 20.sp
     ),
-    // Primary message text (16sp as required)
+    // Message text in bubbles
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.15.sp
+        lineHeight = 21.sp
     ),
-    // Last message preview in chat list (14sp as required)
+    // Last-message preview in the list, subtitles
     bodyMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.25.sp
+        fontSize = 15.sp,
+        lineHeight = 20.sp
     ),
-    // Secondary text / small hints
     bodySmall = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
+        fontSize = 13.sp,
+        lineHeight = 18.sp
     ),
-    // Navigation labels / Button text
+    // Section headers, buttons
     labelLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.1.sp
+        fontSize = 15.sp,
+        lineHeight = 20.sp
     ),
-    // Unread badges / Status chips
+    // Date pills, chips
     labelMedium = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
-        fontSize = 12.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 0.5.sp
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 18.sp
     ),
-    // Message timestamps (11sp as required)
+    // Times in the list, tab labels, badges
     labelSmall = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 0.5.sp
+        fontSize = 13.sp,
+        lineHeight = 16.sp
     )
 )

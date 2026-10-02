@@ -1,7 +1,6 @@
 package com.example.overgram.ui.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,38 +24,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.overgram.R
-import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.AccentBright
+import com.example.overgram.ui.theme.ChatWallpaper
 import com.example.overgram.ui.theme.ErrorRed
+import com.example.overgram.ui.theme.IncomingMeta
+import com.example.overgram.ui.theme.OutgoingCheck
+import com.example.overgram.ui.theme.OutgoingMeta
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryVioletLight
 import com.example.overgram.ui.theme.ReceivedBubbleColor
 import com.example.overgram.ui.theme.ReceivedBubbleShape
 import com.example.overgram.ui.theme.SentBubbleColor
 import com.example.overgram.ui.theme.SentBubbleShape
 import com.example.overgram.ui.theme.TextPrimary
-import com.example.overgram.ui.theme.TextSecondary
 
 /** Delivery state of an outgoing message, shown as an icon next to the timestamp. */
 enum class BubbleStatus { Sending, Sent, Read, Failed }
 
+private val MetaSize = 12.sp
+
 /**
- * Chat message bubble supporting sent and received message variants.
+ * A message bubble, Telegram style: flat colors from the theme (`chat_outBubble` /
+ * `chat_inBubble`) and the time + ticks tucked into the bottom-right corner on the same line as
+ * the end of the text when it fits (the text reserves that space with an invisible copy of the
+ * meta), instead of on a line of their own.
  *
- * @param message Message body text (16sp).
- * @param timestamp Time string (11sp), e.g. "16:45".
- * @param isSent True if sent by current user (right side, violet background), false if received.
- * @param status Delivery state icon for sent messages.
- * @param isEdited Shows an "edited" label before the timestamp.
+ * @param status Delivery ticks for sent messages.
+ * @param isEdited Shows "edited" before the time.
  * @param isPlaceholder Renders [message] as a muted italic note (e.g. "Message deleted").
  * @param senderName Shown above the text, for incoming messages in group chats.
- * @param senderColor Colour of [senderName].
+ * @param senderColor Color of [senderName].
  * @param onClick Optional click callback, e.g. to retry a failed message.
  */
 @Composable
@@ -69,74 +74,64 @@ fun ChatBubble(
     isEdited: Boolean = false,
     isPlaceholder: Boolean = false,
     senderName: String? = null,
-    senderColor: Color = PrimaryVioletLight,
+    senderColor: Color = AccentBright,
     onClick: (() -> Unit)? = null
 ) {
-    val bubbleShape = if (isSent) SentBubbleShape else ReceivedBubbleShape
-    val backgroundColor = if (isSent) SentBubbleColor else ReceivedBubbleColor
-    val alignment = if (isSent) Alignment.CenterEnd else Alignment.CenterStart
-    val metaColor = if (isSent) Color.White.copy(alpha = 0.7f) else TextSecondary
+    val metaColor = if (isSent) OutgoingMeta else IncomingMeta
+    val edited = if (isEdited) stringResource(R.string.message_edited) + " " else ""
+    // What the meta row will show; reserved (transparently) at the end of the text.
+    val metaText = edited + timestamp + if (isSent) "  " else ""
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = Dimens.ScreenPadding, vertical = 4.dp),
-        contentAlignment = alignment
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        contentAlignment = if (isSent) Alignment.CenterEnd else Alignment.CenterStart
     ) {
         Surface(
-            shape = bubbleShape,
-            color = backgroundColor,
+            shape = if (isSent) SentBubbleShape else ReceivedBubbleShape,
+            color = if (isSent) SentBubbleColor else ReceivedBubbleColor,
             modifier = Modifier
-                .widthIn(max = 280.dp)
+                .widthIn(max = 300.dp)
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-            ) {
-                if (senderName != null) {
-                    Text(
-                        text = senderName,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = senderColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.size(2.dp))
-                }
-
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isPlaceholder) metaColor else TextPrimary,
-                    fontStyle = if (isPlaceholder) FontStyle.Italic else FontStyle.Normal
-                )
-
-                Spacer(modifier = Modifier.size(4.dp))
-
-                Row(
-                    modifier = Modifier.align(Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    if (isEdited) {
+            Box(Modifier.padding(start = 10.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)) {
+                Column {
+                    if (senderName != null) {
                         Text(
-                            text = stringResource(R.string.message_edited),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = metaColor,
-                            fontSize = 11.sp
+                            text = senderName,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = senderColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
                     }
-
                     Text(
-                        text = timestamp,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = metaColor,
-                        fontSize = 11.sp
+                        text = buildAnnotatedString {
+                            append(message)
+                            withStyle(SpanStyle(color = Color.Transparent, fontSize = MetaSize)) {
+                                append("  $metaText")
+                            }
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (isPlaceholder) metaColor else TextPrimary,
+                        fontStyle = if (isPlaceholder) FontStyle.Italic else FontStyle.Normal
                     )
-
+                }
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 1.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = edited + timestamp,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = MetaSize,
+                        color = metaColor
+                    )
                     if (isSent) {
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(Modifier.width(3.dp))
                         Icon(
                             imageVector = when (status) {
                                 BubbleStatus.Sending -> Icons.Default.Schedule
@@ -152,8 +147,12 @@ fun ChatBubble(
                                     BubbleStatus.Failed -> R.string.message_status_failed
                                 }
                             ),
-                            tint = if (status == BubbleStatus.Failed) ErrorRed else Color.White.copy(alpha = 0.85f),
-                            modifier = Modifier.size(14.dp)
+                            tint = when (status) {
+                                BubbleStatus.Failed -> ErrorRed
+                                BubbleStatus.Sending -> metaColor
+                                else -> OutgoingCheck
+                            },
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }
@@ -166,38 +165,20 @@ fun ChatBubble(
 @Composable
 fun ChatBubblePreview() {
     OverGramTheme {
-        Surface(color = BackgroundDark) {
+        Surface(color = ChatWallpaper) {
             Column(modifier = Modifier.padding(vertical = 16.dp)) {
+                ChatBubble(message = "Привет! Как дела?", timestamp = "16:45", isSent = true, status = BubbleStatus.Read)
                 ChatBubble(
-                    message = "Привет! Как дела?",
-                    timestamp = "16:45",
-                    isSent = true,
-                    status = BubbleStatus.Read
-                )
-                ChatBubble(
-                    message = "Привет! Всё нормально а у тебя?",
+                    message = "Привет! Всё нормально, а у тебя? Давно не виделись, может встретимся на выходных?",
                     timestamp = "16:46",
                     isSent = false,
+                    senderName = "Ada Lovelace",
+                    senderColor = Color(0xFFB9A2F5),
                     isEdited = true
                 )
-                ChatBubble(
-                    message = "Тоже нормально, просто хочу кое-что обсудить",
-                    timestamp = "16:47",
-                    isSent = true,
-                    status = BubbleStatus.Sending
-                )
-                ChatBubble(
-                    message = "Message deleted",
-                    timestamp = "16:47",
-                    isSent = false,
-                    isPlaceholder = true
-                )
-                ChatBubble(
-                    message = "Не дошло",
-                    timestamp = "16:48",
-                    isSent = true,
-                    status = BubbleStatus.Failed
-                )
+                ChatBubble(message = "Ок 👍", timestamp = "16:47", isSent = true, status = BubbleStatus.Sending)
+                ChatBubble(message = "Message deleted", timestamp = "16:47", isSent = false, isPlaceholder = true)
+                ChatBubble(message = "Не дошло", timestamp = "16:48", isSent = true, status = BubbleStatus.Failed)
             }
         }
     }

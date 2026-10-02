@@ -44,7 +44,7 @@ import com.example.overgram.ui.theme.CardShape
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
@@ -142,8 +142,8 @@ fun PhoneEntryContent(
                     unfocusedTextColor = TextPrimary,
                     disabledTextColor = TextSecondary,
                     errorTextColor = TextPrimary,
-                    cursorColor = PrimaryViolet,
-                    errorCursorColor = PrimaryViolet
+                    cursorColor = Accent,
+                    errorCursorColor = Accent
                 )
             )
 

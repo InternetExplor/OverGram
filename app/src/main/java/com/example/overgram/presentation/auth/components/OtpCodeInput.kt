@@ -36,7 +36,7 @@ import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.IconContainerShape
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.TextPrimary
 
@@ -103,7 +103,7 @@ fun OtpCodeInput(
 private fun RowScope.OtpBox(char: Char?, isActive: Boolean, isError: Boolean) {
     val borderColor = when {
         isError -> ErrorRed
-        isActive -> PrimaryViolet
+        isActive -> Accent
         else -> DividerColor
     }
     Box(

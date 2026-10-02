@@ -117,11 +117,12 @@
     <string name="contacts_empty">Здесь появятся люди, с которыми вы переписываетесь. Нажмите «Найти людей», чтобы начать разговор.</string>
 
     <!-- Settings -->
-    <string name="settings_no_username">Задать username</string>
     <string name="settings_section_account">Аккаунт</string>
+    <string name="settings_phone_caption">Телефон</string>
+    <string name="settings_username_caption">Имя пользователя</string>
+    <string name="settings_username_none">Не задано</string>
+    <string name="settings_section_settings">Настройки</string>
     <string name="settings_edit_profile">Изменить профиль</string>
-    <string name="settings_edit_profile_subtitle">Имя, username и фото</string>
-    <string name="settings_section_storage">Данные и память</string>
     <string name="settings_clear_cache">Очистить кеш</string>
     <string name="settings_clear_cache_subtitle">Освободить место. Чаты и история загрузятся снова, когда вы их откроете.</string>
     <string name="settings_clear_cache_confirm_title">Очистить кеш?</string>
@@ -225,7 +226,7 @@
     <string name="username_invalid">Используйте 3–32 символа: латинские буквы, цифры и _</string>
 
     <!-- Private chat -->
-    <string name="chat_input_placeholder">Сообщение…</string>
+    <string name="chat_input_placeholder">Сообщение</string>
     <string name="input_attach">Прикрепить файл</string>
     <string name="input_emoji">Эмодзи</string>
     <string name="input_show_keyboard">Показать клавиатуру</string>

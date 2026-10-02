@@ -89,12 +89,14 @@ import com.example.overgram.ui.components.BubbleStatus
 import com.example.overgram.ui.components.ChatBubble
 import com.example.overgram.ui.components.MessageInputBar
 import com.example.overgram.ui.components.OverGramTopBar
+import com.example.overgram.ui.theme.ServiceBackground
+import com.example.overgram.ui.theme.ChatWallpaper
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
@@ -234,7 +236,7 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = BackgroundDark,
+        containerColor = ChatWallpaper,
         topBar = {
             OverGramTopBar(
                 title = state.title,
@@ -293,7 +295,7 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
             when {
                 state.messages.isNotEmpty() -> MessageList(state = state, actions = actions)
                 state.isLoading -> CircularProgressIndicator(
-                    color = PrimaryViolet,
+                    color = Accent,
                     modifier = Modifier.align(Alignment.Center)
                 )
                 state.loadError != null -> Column(
@@ -310,7 +312,7 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
                     )
                     Spacer(Modifier.height(Dimens.SpacingLg))
                     TextButton(onClick = actions.onRetryLoad) {
-                        Text(stringResource(R.string.chats_retry), color = PrimaryViolet)
+                        Text(stringResource(R.string.chats_retry), color = Accent)
                     }
                 }
                 else -> Text(
@@ -459,7 +461,7 @@ private fun MessageList(state: ChatUiState, actions: ChatActions) {
         if (state.isLoadingOlder) {
             item(key = "loading-older") {
                 Box(Modifier.fillMaxWidth().padding(Dimens.SpacingMd), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PrimaryViolet, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = Accent, modifier = Modifier.size(24.dp))
                 }
             }
         }
@@ -547,9 +549,10 @@ private fun messageText(item: ChatMessageItem): String {
 private fun senderColor(userId: String): Color =
     SENDER_COLORS[abs(userId.hashCode()) % SENDER_COLORS.size]
 
+/** Telegram's name colors for the dark theme (red, orange, violet, green, cyan, blue, pink). */
 private val SENDER_COLORS = listOf(
-    Color(0xFFB39DFF), Color(0xFF64B5F6), Color(0xFF4DD0E1), Color(0xFF81C784),
-    Color(0xFFFFB74D), Color(0xFFF06292), Color(0xFFBA68C8), Color(0xFFFF8A65)
+    Color(0xFFFF8E86), Color(0xFFFFA357), Color(0xFFB18FFF), Color(0xFF4FD660),
+    Color(0xFF45E8D1), Color(0xFF7AC8FF), Color(0xFFFF7FD5)
 )
 
 @Composable
@@ -566,11 +569,11 @@ private fun CenteredPill(text: String, horizontalPadding: androidx.compose.ui.un
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            color = TextSecondary,
+            color = TextPrimary,
             textAlign = TextAlign.Center,
             modifier = Modifier
-                .background(SurfaceElevatedDark, RoundedCornerShape(12.dp))
-                .padding(horizontal = Dimens.SpacingMd, vertical = Dimens.SpacingXs)
+                .background(ServiceBackground, RoundedCornerShape(50))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }
 }
@@ -602,9 +605,9 @@ private fun RenameDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
                         unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = PrimaryViolet,
+                        focusedBorderColor = Accent,
                         unfocusedBorderColor = DividerColor,
-                        cursorColor = PrimaryViolet
+                        cursorColor = Accent
                     )
                 )
                 state.error?.let {
@@ -615,9 +618,9 @@ private fun RenameDialog(
         confirmButton = {
             TextButton(onClick = onSave, enabled = !state.isSaving && state.input.isNotBlank()) {
                 if (state.isSaving) {
-                    CircularProgressIndicator(color = PrimaryViolet, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(color = Accent, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
-                    Text(stringResource(R.string.action_save), color = PrimaryViolet)
+                    Text(stringResource(R.string.action_save), color = Accent)
                 }
             }
         },

@@ -20,21 +20,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.UnreadCounter
 import com.example.overgram.ui.theme.TextPrimary
 
 /**
- * Violet unread message counter badge.
+ * Unread counter pill (Telegram `chats_unreadCounter`; grey for muted chats).
  *
  * @param count Number of unread messages to display.
- * @param backgroundColor Background color of the badge (defaults to PrimaryViolet).
+ * @param backgroundColor Background color of the badge (defaults to Accent).
  * @param textColor Text color inside the badge.
  */
 @Composable
 fun UnreadBadge(
     count: Int,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = PrimaryViolet,
+    backgroundColor: Color = UnreadCounter,
     textColor: Color = TextPrimary
 ) {
     if (count <= 0) return
@@ -46,14 +46,14 @@ fun UnreadBadge(
             .sizeIn(minWidth = Dimens.UnreadBadgeMinSize, minHeight = Dimens.UnreadBadgeMinSize)
             .clip(CircleShape)
             .background(backgroundColor)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+            .padding(horizontal = 7.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             color = textColor,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium
         )
     }
 }

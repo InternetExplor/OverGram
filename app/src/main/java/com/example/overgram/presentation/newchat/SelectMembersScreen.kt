@@ -73,7 +73,7 @@ import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
@@ -156,7 +156,7 @@ fun SelectMembersContent(
                 actions = {
                     if (state.isSubmitting) {
                         CircularProgressIndicator(
-                            color = PrimaryViolet,
+                            color = Accent,
                             strokeWidth = 2.dp,
                             modifier = Modifier
                                 .padding(horizontal = Dimens.SpacingLg)
@@ -166,7 +166,7 @@ fun SelectMembersContent(
                         TextButton(onClick = onSubmit, enabled = state.canSubmit) {
                             Text(
                                 stringResource(if (state.isCreating) R.string.new_group_create else R.string.add_members_confirm),
-                                color = if (state.canSubmit) PrimaryViolet else TextSecondary
+                                color = if (state.canSubmit) Accent else TextSecondary
                             )
                         }
                     }
@@ -237,7 +237,7 @@ fun SelectMembersContent(
                 placeholder = { Text(stringResource(R.string.new_chat_search_hint), color = TextSecondary) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
                 trailingIcon = if (state.isSearching) {
-                    { CircularProgressIndicator(color = PrimaryViolet, modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+                    { CircularProgressIndicator(color = Accent, modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
                 } else null,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -306,7 +306,7 @@ private fun SelectableUserRow(user: UserProfile, isSelected: Boolean, onToggle: 
         Checkbox(
             checked = isSelected,
             onCheckedChange = { onToggle() },
-            colors = CheckboxDefaults.colors(checkedColor = PrimaryViolet, uncheckedColor = TextSecondary)
+            colors = CheckboxDefaults.colors(checkedColor = Accent, uncheckedColor = TextSecondary)
         )
     }
 }
@@ -327,9 +327,9 @@ private fun Hint(text: String) {
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = TextPrimary,
     unfocusedTextColor = TextPrimary,
-    focusedBorderColor = PrimaryViolet,
+    focusedBorderColor = Accent,
     unfocusedBorderColor = DividerColor,
-    cursorColor = PrimaryViolet
+    cursorColor = Accent
 )
 
 @Preview(showBackground = true)

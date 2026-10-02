@@ -23,7 +23,7 @@ fun OverGramTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
-                window.statusBarColor = BackgroundDark.toArgb()
+                window.statusBarColor = SurfaceDark.toArgb()
                 window.navigationBarColor = BackgroundDark.toArgb()
                 val insetsController = WindowCompat.getInsetsController(window, view)
                 insetsController.isAppearanceLightStatusBars = false

@@ -25,9 +25,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.overgram.R
-import com.example.overgram.ui.theme.BackgroundDark
+import com.example.overgram.ui.theme.HeaderSubtitle
+import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.Dimens
-import com.example.overgram.ui.theme.OnlineStatusViolet
+import com.example.overgram.ui.theme.OnlineBlue
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
@@ -72,7 +73,7 @@ fun OverGramTopBar(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (highlightSubtitle) OnlineStatusViolet else TextSecondary,
+                        color = if (highlightSubtitle) OnlineBlue else HeaderSubtitle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -102,8 +103,8 @@ fun OverGramTopBar(
         },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = BackgroundDark,
-            scrolledContainerColor = BackgroundDark
+            containerColor = SurfaceDark,
+            scrolledContainerColor = SurfaceDark
         )
     )
 }

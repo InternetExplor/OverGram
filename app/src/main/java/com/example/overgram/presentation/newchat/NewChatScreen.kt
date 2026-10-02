@@ -62,12 +62,13 @@ import com.example.overgram.presentation.chat.ChatScreen
 import com.example.overgram.presentation.chatlist.presenceText
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.OverGramTopBar
+import com.example.overgram.ui.theme.AccentBright
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
@@ -158,7 +159,7 @@ fun NewChatContent(
                 placeholder = { Text(stringResource(R.string.new_chat_search_hint), color = TextSecondary) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
                 trailingIcon = if (state.isSearching) {
-                    { CircularProgressIndicator(color = PrimaryViolet, modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+                    { CircularProgressIndicator(color = Accent, modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
                 } else null,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -204,17 +205,16 @@ private fun NewGroupRow(onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(Dimens.AvatarMedium)
-                .background(PrimaryViolet, CircleShape),
+                .size(Dimens.AvatarMedium),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.GroupAdd, contentDescription = null, tint = TextPrimary)
+            Icon(Icons.Default.GroupAdd, contentDescription = null, tint = AccentBright)
         }
         Spacer(Modifier.width(Dimens.SpacingLg))
         Text(
             text = stringResource(R.string.new_group),
             style = MaterialTheme.typography.titleMedium,
-            color = PrimaryViolet
+            color = AccentBright
         )
     }
 }
@@ -232,13 +232,13 @@ private fun MyUsernameRow(me: MyProfile?, onEdit: () -> Unit) {
             text = me.username?.let { stringResource(R.string.new_chat_your_username, it) }
                 ?: stringResource(R.string.new_chat_no_username),
             style = MaterialTheme.typography.bodyMedium,
-            color = if (me.username == null) PrimaryViolet else TextSecondary,
+            color = if (me.username == null) Accent else TextSecondary,
             modifier = Modifier.weight(1f)
         )
         TextButton(onClick = onEdit) {
             Text(
                 stringResource(if (me.username == null) R.string.new_chat_set_username else R.string.new_chat_change_username),
-                color = PrimaryViolet
+                color = AccentBright
             )
         }
     }
@@ -277,7 +277,7 @@ private fun UserRow(user: UserProfile, isOpening: Boolean, onClick: () -> Unit) 
             )
         }
         if (isOpening) {
-            CircularProgressIndicator(color = PrimaryViolet, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            CircularProgressIndicator(color = Accent, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         }
     }
 }
@@ -341,9 +341,9 @@ private fun UsernameDialog(
         confirmButton = {
             TextButton(onClick = onSave, enabled = !state.isSavingUsername) {
                 if (state.isSavingUsername) {
-                    CircularProgressIndicator(color = PrimaryViolet, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(color = Accent, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
-                    Text(stringResource(R.string.username_dialog_save), color = PrimaryViolet)
+                    Text(stringResource(R.string.username_dialog_save), color = Accent)
                 }
             }
         },
@@ -359,9 +359,9 @@ private fun UsernameDialog(
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = TextPrimary,
     unfocusedTextColor = TextPrimary,
-    focusedBorderColor = PrimaryViolet,
+    focusedBorderColor = Accent,
     unfocusedBorderColor = DividerColor,
-    cursorColor = PrimaryViolet
+    cursorColor = Accent
 )
 
 @Preview(showBackground = true)

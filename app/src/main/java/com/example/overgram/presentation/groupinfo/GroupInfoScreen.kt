@@ -70,7 +70,7 @@ import com.example.overgram.ui.theme.DividerColor
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.ErrorRed
 import com.example.overgram.ui.theme.OverGramTheme
-import com.example.overgram.ui.theme.PrimaryViolet
+import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
@@ -170,7 +170,7 @@ fun GroupInfoContent(
                 ActionRow(
                     icon = Icons.Default.PersonAdd,
                     text = stringResource(R.string.chat_add_members),
-                    color = PrimaryViolet,
+                    color = Accent,
                     onClick = onAddMembers
                 )
                 HorizontalDivider(color = DividerColor)
@@ -179,7 +179,7 @@ fun GroupInfoContent(
             when {
                 state.isLoading && state.members.isEmpty() -> item(key = "loading") {
                     Box(Modifier.fillMaxWidth().padding(Dimens.SpacingXl), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = PrimaryViolet)
+                        CircularProgressIndicator(color = Accent)
                     }
                 }
                 state.loadError != null -> item(key = "error") {
@@ -193,7 +193,7 @@ fun GroupInfoContent(
                             textAlign = TextAlign.Center
                         )
                         TextButton(onClick = onRetry) {
-                            Text(stringResource(R.string.chats_retry), color = PrimaryViolet)
+                            Text(stringResource(R.string.chats_retry), color = Accent)
                         }
                     }
                 }
@@ -202,7 +202,7 @@ fun GroupInfoContent(
                         Text(
                             text = pluralStringResource(R.plurals.group_members_count, state.memberCount, state.memberCount),
                             style = MaterialTheme.typography.labelLarge,
-                            color = PrimaryViolet,
+                            color = Accent,
                             modifier = Modifier.padding(
                                 start = Dimens.ScreenPadding,
                                 end = Dimens.ScreenPadding,
@@ -356,7 +356,7 @@ private fun MemberRow(
                 text = listOfNotNull(member.username?.let { "@$it" }, if (isLive) presenceText(member) else null)
                     .joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (showOnline) PrimaryViolet else TextSecondary,
+                color = if (showOnline) Accent else TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -365,7 +365,7 @@ private fun MemberRow(
             Text(
                 text = stringResource(R.string.group_role_owner),
                 style = MaterialTheme.typography.labelMedium,
-                color = PrimaryViolet,
+                color = Accent,
                 modifier = Modifier
                     .padding(horizontal = Dimens.SpacingSm)
                     .background(SurfaceElevatedDark, RoundedCornerShape(8.dp))
@@ -374,7 +374,7 @@ private fun MemberRow(
         }
         when {
             isRemoving -> CircularProgressIndicator(
-                color = PrimaryViolet,
+                color = Accent,
                 strokeWidth = 2.dp,
                 modifier = Modifier
                     .padding(Dimens.SpacingMd)

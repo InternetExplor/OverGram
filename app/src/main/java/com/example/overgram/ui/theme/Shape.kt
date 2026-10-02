@@ -12,19 +12,19 @@ val CardShape = RoundedCornerShape(16.dp)
 val AvatarShape = CircleShape
 val UnreadBadgeShape = CircleShape
 
-// Message bubble shapes (~18dp with smaller corner on sender/receiver side)
+// Telegram bubbles: 16 dp corners, a tighter corner where the tail would be
 val SentBubbleShape = RoundedCornerShape(
-    topStart = 18.dp,
-    topEnd = 18.dp,
-    bottomStart = 18.dp,
-    bottomEnd = 4.dp
+    topStart = 16.dp,
+    topEnd = 16.dp,
+    bottomStart = 16.dp,
+    bottomEnd = 6.dp
 )
 
 val ReceivedBubbleShape = RoundedCornerShape(
-    topStart = 18.dp,
-    topEnd = 18.dp,
-    bottomStart = 4.dp,
-    bottomEnd = 18.dp
+    topStart = 16.dp,
+    topEnd = 16.dp,
+    bottomStart = 6.dp,
+    bottomEnd = 16.dp
 )
 
 val InputBarShape = RoundedCornerShape(24.dp)
