@@ -96,6 +96,7 @@
 
     <!-- Realtime -->
     <string name="connection_connecting">Connecting…</string>
+    <string name="connection_waiting_for_network">Waiting for network…</string>
     <string name="typing_short">typing…</string>
     <string name="typing_one">%1$s is typing…</string>
     <string name="typing_two">%1$s and %2$s are typing…</string>

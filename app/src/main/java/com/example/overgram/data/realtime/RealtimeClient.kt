@@ -44,11 +44,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -94,8 +96,14 @@ class RealtimeClient @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val commands = Channel<Command>(Channel.UNLIMITED)
 
-    private val _connectionState = MutableStateFlow(ConnectionState.Disconnected)
-    override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+    /** Socket lifecycle as the command loop sees it; [connectionState] adds "no network at all". */
+    private val socketState = MutableStateFlow(ConnectionState.Disconnected)
+    private val networkAvailable = MutableStateFlow(true)
+
+    override val connectionState: StateFlow<ConnectionState> =
+        combine(socketState, networkAvailable) { socket, network ->
+            if (!network && socket != ConnectionState.Connected) ConnectionState.WaitingForNetwork else socket
+        }.stateIn(scope, SharingStarted.Eagerly, ConnectionState.Disconnected)
 
     private val _events = MutableSharedFlow<RealtimeEvent>(extraBufferCapacity = EVENT_BUFFER)
     override val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
@@ -123,10 +131,18 @@ class RealtimeClient @Inject constructor(
         // Coming back online (airplane mode off, Wi-Fi back): connect now, not after the backoff
         // that grew while every attempt failed.
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        networkAvailable.value = connectivity?.activeNetwork != null
         try {
             connectivity?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
+                    networkAvailable.value = true
                     commands.trySend(Command.NetworkAvailable)
+                }
+
+                override fun onLost(network: Network) {
+                    // When switching Wi-Fi ↔ mobile the old network is lost after the new one
+                    // became the default; only report "no network" if nothing replaced it.
+                    networkAvailable.value = connectivity.activeNetwork != null
                 }
             })
         } catch (e: SecurityException) {
@@ -158,7 +174,7 @@ class RealtimeClient @Inject constructor(
         readCursorsByChat.map { it[chatId].orEmpty() }.distinctUntilChanged()
 
     override fun sendTyping(chatId: String) {
-        if (_connectionState.value == ConnectionState.Connected) {
+        if (socketState.value == ConnectionState.Connected) {
             socket?.send(gson.toJson(TypingFrame(chatId)))
         }
     }
@@ -169,7 +185,7 @@ class RealtimeClient @Inject constructor(
      * which the server deduplicates.
      */
     suspend fun sendMessage(chatId: String, clientMessageId: String, text: String): SendResult? {
-        if (_connectionState.value != ConnectionState.Connected) return null
+        if (socketState.value != ConnectionState.Connected) return null
         val ws = socket ?: return null
         val deferred = CompletableDeferred<SendResult?>()
         pendingAcks[clientMessageId] = deferred
@@ -184,7 +200,7 @@ class RealtimeClient @Inject constructor(
 
     /** Advances the read cursor over the socket; false if not connected (use REST then). */
     fun sendRead(chatId: String, upToSeq: Long): Boolean =
-        _connectionState.value == ConnectionState.Connected &&
+        socketState.value == ConnectionState.Connected &&
             socket?.send(gson.toJson(CursorFrame("read", chatId, upToSeq))) == true
 
     // ---- command loop ----
@@ -227,7 +243,7 @@ class RealtimeClient @Inject constructor(
                 disconnect()
                 connect()
             }
-            Command.CatchUp -> if (_connectionState.value == ConnectionState.Connected) catchUp()
+            Command.CatchUp -> if (socketState.value == ConnectionState.Connected) catchUp()
             is Command.Opened -> if (command.generation == generation) sendAuth()
             is Command.Text -> if (command.generation == generation) onFrame(command.text)
             is Command.Closed -> if (command.generation == generation) onClosed(command.code, command.reason)
@@ -241,10 +257,10 @@ class RealtimeClient @Inject constructor(
             wanted = false // logged out
             return
         }
-        _connectionState.value = ConnectionState.Connecting
+        socketState.value = ConnectionState.Connecting
         // A fresh install starts from the server's current position, not from history.
         if (syncPreferences.getCursor() == null && !bootstrapCursor()) {
-            _connectionState.value = ConnectionState.Disconnected
+            socketState.value = ConnectionState.Disconnected
             scheduleReconnect()
             return
         }
@@ -260,7 +276,7 @@ class RealtimeClient @Inject constructor(
         generation++ // ignore whatever the old socket still reports
         socket?.close(NORMAL_CLOSURE, null)
         socket = null
-        _connectionState.value = ConnectionState.Disconnected
+        socketState.value = ConnectionState.Disconnected
         failPendingAcks()
     }
 
@@ -283,7 +299,7 @@ class RealtimeClient @Inject constructor(
 
         when (frame.type) {
             "auth_ok" -> {
-                _connectionState.value = ConnectionState.Connected
+                socketState.value = ConnectionState.Connected
                 attempt = 0
                 unauthorizedStreak = 0
                 scheduleTokenRotation()
@@ -321,7 +337,7 @@ class RealtimeClient @Inject constructor(
         Timber.i("Realtime: closed code=$code reason=$reason")
         socket = null
         rotateJob?.cancel()
-        _connectionState.value = ConnectionState.Disconnected
+        socketState.value = ConnectionState.Disconnected
         failPendingAcks()
         if (!wanted) return
 

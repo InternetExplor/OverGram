@@ -2,6 +2,7 @@ package com.example.overgram.presentation.chat
 
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SystemEvent
 import com.example.overgram.domain.model.SystemEventKind
@@ -50,6 +51,8 @@ data class ChatUiState(
     val isMuted: Boolean = false,
     /** Other members typing right now. */
     val typingUserIds: Set<String> = emptySet(),
+    /** Shown instead of presence while live updates aren't flowing. */
+    val connectionState: ConnectionState = ConnectionState.Connected,
     /** Newest first, matching the reversed message list. */
     val messages: List<ChatMessageItem> = emptyList(),
     /** Senders and users mentioned by system events, by id. */
@@ -69,6 +72,9 @@ data class ChatUiState(
     val hasLeft: Boolean = false
 ) {
     val isGroup: Boolean get() = type == ChatType.GROUP
+
+    /** Presence and typing are only current while connected; otherwise they're stale. */
+    val isLive: Boolean get() = connectionState == ConnectionState.Connected
 
     /**
      * Group members as far as the loaded history tells (Relay has no member-list endpoint):

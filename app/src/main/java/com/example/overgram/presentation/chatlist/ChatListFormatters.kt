@@ -8,10 +8,12 @@ import androidx.compose.ui.res.stringResource
 import com.example.overgram.R
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SystemEvent
 import com.example.overgram.domain.model.SystemEventKind
 import com.example.overgram.domain.model.UserProfile
+import com.example.overgram.ui.time.LocalNow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -111,8 +113,16 @@ fun joinNames(names: List<String>): String = when (names.size) {
 private fun String?.withPrefix(label: String): String =
     if (isNullOrBlank()) label else "$label, $this"
 
+/** "Waiting for network…" / "Connecting…" while live updates aren't flowing; null when connected. */
 @Composable
-fun presenceText(user: UserProfile, now: Long = System.currentTimeMillis()): String {
+fun connectionStatusText(state: ConnectionState): String? = when (state) {
+    ConnectionState.WaitingForNetwork -> stringResource(R.string.connection_waiting_for_network)
+    ConnectionState.Disconnected, ConnectionState.Connecting -> stringResource(R.string.connection_connecting)
+    ConnectionState.Connected -> null
+}
+
+@Composable
+fun presenceText(user: UserProfile, now: Long = LocalNow.current): String {
     if (user.isOnline) return stringResource(R.string.presence_online)
     val lastSeen = user.lastSeenAt ?: return stringResource(R.string.presence_last_seen_recently)
 
@@ -130,7 +140,7 @@ fun presenceText(user: UserProfile, now: Long = System.currentTimeMillis()): Str
 
 /** "21:32" today, "Mon" within the last week, "28.09.26" otherwise. */
 @Composable
-fun chatTime(timestamp: Long, now: Long = System.currentTimeMillis()): String {
+fun chatTime(timestamp: Long, now: Long = LocalNow.current): String {
     if (timestamp <= 0L) return ""
     return when {
         isSameDay(timestamp, now) -> formatClock(timestamp)
@@ -146,7 +156,7 @@ fun formatClock(timestamp: Long): String =
 
 /** "Today", "Yesterday", or "2 October" (with the year if it isn't the current one). */
 @Composable
-fun dayLabel(timestamp: Long, now: Long = System.currentTimeMillis()): String = when {
+fun dayLabel(timestamp: Long, now: Long = LocalNow.current): String = when {
     isSameDay(timestamp, now) -> stringResource(R.string.day_today)
     isSameDay(timestamp, now - DAY_MS) -> stringResource(R.string.day_yesterday)
     else -> {

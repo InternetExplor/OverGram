@@ -11,6 +11,7 @@ import com.example.overgram.domain.usecase.SetRealtimeActiveUseCase
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.chatlist.ChatListScreen
 import com.example.overgram.ui.theme.OverGramTheme
+import com.example.overgram.ui.time.ProvideTickingNow
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -41,8 +42,11 @@ class MainActivity : ComponentActivity() {
         val startScreen = if (hasSession()) ChatListScreen else PhoneEntryScreen
         setContent {
             OverGramTheme {
-                Navigator(startScreen) { navigator ->
-                    SlideTransition(navigator)
+                // One app-wide clock so relative times ("last seen 5 minutes ago") keep counting.
+                ProvideTickingNow {
+                    Navigator(startScreen) { navigator ->
+                        SlideTransition(navigator)
+                    }
                 }
             }
         }

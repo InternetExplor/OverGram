@@ -4,11 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
+import com.example.overgram.domain.model.ConnectionState
+import com.example.overgram.domain.model.RealtimeEvent
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.domain.usecase.GetChatUseCase
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
 import com.example.overgram.domain.usecase.GetGroupMembersUseCase
 import com.example.overgram.domain.usecase.LeaveChatUseCase
+import com.example.overgram.domain.usecase.ObserveConnectionStateUseCase
+import com.example.overgram.domain.usecase.ObserveRealtimeEventsUseCase
 import com.example.overgram.domain.usecase.RemoveMemberUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -37,7 +41,9 @@ data class GroupInfoUiState(
     val removingUserId: String? = null,
     val isLeaving: Boolean = false,
     val hasLeft: Boolean = false,
-    val isSessionEnded: Boolean = false
+    val isSessionEnded: Boolean = false,
+    /** Presence is only current while connected. */
+    val isLive: Boolean = true
 ) {
     /** Only the owner gets member management: admin rights aren't visible from history. */
     val isOwner: Boolean get() = ownerId != null && ownerId == currentUserId
@@ -53,6 +59,8 @@ class GroupInfoViewModel @AssistedInject constructor(
     private val getChat: GetChatUseCase,
     private val removeMember: RemoveMemberUseCase,
     private val leaveChat: LeaveChatUseCase,
+    observeEvents: ObserveRealtimeEventsUseCase,
+    observeConnectionState: ObserveConnectionStateUseCase,
     getCurrentUserId: GetCurrentUserIdUseCase
 ) : ViewModel() {
 
@@ -65,6 +73,33 @@ class GroupInfoViewModel @AssistedInject constructor(
     val uiState: StateFlow<GroupInfoUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            observeConnectionState().collect { connection ->
+                _uiState.update { it.copy(isLive = connection == ConnectionState.Connected) }
+            }
+        }
+        viewModelScope.launch {
+            observeEvents().collect { event ->
+                when (event) {
+                    is RealtimeEvent.Presence -> _uiState.update { state ->
+                        state.copy(
+                            members = state.members.map { member ->
+                                if (member.id != event.userId) member
+                                else member.copy(isOnline = event.isOnline, lastSeenAt = event.lastSeenAt)
+                            }
+                        )
+                    }
+                    // Someone joined/left/was removed, or the group was renamed.
+                    is RealtimeEvent.MemberChanged -> if (event.chatId == chatId) refresh()
+                    is RealtimeEvent.ChatChanged -> if (event.chatId == chatId) refresh()
+                    RealtimeEvent.SessionEnded -> _uiState.update { it.copy(isSessionEnded = true) }
+                    else -> Unit
+                }
+            }
+        }
+    }
 
     /** Called on every start, so the list is fresh after "Add members". */
     fun refresh() {

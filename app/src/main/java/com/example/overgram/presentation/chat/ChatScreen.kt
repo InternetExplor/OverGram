@@ -75,6 +75,7 @@ import com.example.overgram.domain.model.SystemEventKind
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
+import com.example.overgram.presentation.chatlist.connectionStatusText
 import com.example.overgram.presentation.chatlist.dayLabel
 import com.example.overgram.presentation.chatlist.formatClock
 import com.example.overgram.presentation.chatlist.isSameDay
@@ -237,14 +238,14 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
             OverGramTopBar(
                 title = state.title,
                 subtitle = chatSubtitle(state),
-                highlightSubtitle = state.typingUserIds.isNotEmpty() || state.peer?.isOnline == true,
+                highlightSubtitle = state.isLive && (state.typingUserIds.isNotEmpty() || state.peer?.isOnline == true),
                 onBackClick = actions.onBack,
                 onTitleClick = if (state.isGroup) actions.onGroupInfo else null,
                 leadContent = {
                     Avatar(
                         name = state.title,
                         size = Dimens.AvatarSmall,
-                        isOnline = state.peer?.isOnline == true
+                        isOnline = state.isLive && state.peer?.isOnline == true
                     )
                 },
                 actions = {
@@ -339,6 +340,7 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
 /** DIRECT: the peer's presence. GROUP: who's in it, as far as the loaded history tells. */
 @Composable
 private fun chatSubtitle(state: ChatUiState): String? {
+    connectionStatusText(state.connectionState)?.let { return it }
     typingText(state)?.let { return it }
     if (!state.isGroup) return state.peer?.let { presenceText(it) }
     val ids = state.knownMemberIds

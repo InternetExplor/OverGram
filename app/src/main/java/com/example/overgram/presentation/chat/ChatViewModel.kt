@@ -122,6 +122,7 @@ class ChatViewModel @AssistedInject constructor(
         viewModelScope.launch {
             var wasConnected = observeConnectionState().value == ConnectionState.Connected
             observeConnectionState().collect { connection ->
+                _uiState.update { it.copy(connectionState = connection) }
                 val connected = connection == ConnectionState.Connected
                 // Reconnected: the global catch-up replays events, but this chat's newest page
                 // is the cheapest way to be sure nothing on screen is stale.

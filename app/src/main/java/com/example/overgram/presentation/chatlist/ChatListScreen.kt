@@ -70,7 +70,6 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.example.overgram.R
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
-import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.UserProfile
@@ -177,9 +176,7 @@ fun ChatListContent(
                 OverGramTopBar(
                     title = stringResource(R.string.app_name),
                     // Like Telegram: say so while live updates aren't flowing.
-                    subtitle = if (state.connectionState != ConnectionState.Connected) {
-                        stringResource(R.string.connection_connecting)
-                    } else null,
+                    subtitle = connectionStatusText(state.connectionState),
                     actions = {
                         IconButton(onClick = { isSearchOpen = true }) {
                             Icon(
@@ -229,10 +226,12 @@ fun ChatListContent(
                 )
                 state.chats.isNotEmpty() -> ChatList(
                     chats = visibleChats,
-                    // The "online now" strip is noise while looking for a specific chat.
-                    onlineUsers = if (isSearchOpen) emptyList() else state.onlineUsers,
+                    // The "online now" strip is noise while looking for a specific chat, and
+                    // stale while disconnected.
+                    onlineUsers = if (isSearchOpen || !state.isLive) emptyList() else state.onlineUsers,
                     currentUserId = state.currentUserId,
                     typing = state.typing,
+                    isLive = state.isLive,
                     onChatClick = onChatClick
                 )
                 state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -347,6 +346,7 @@ private fun ChatList(
     onlineUsers: List<UserProfile>,
     currentUserId: String?,
     typing: Map<String, Set<String>>,
+    isLive: Boolean,
     onChatClick: (ChatSummary) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -367,7 +367,7 @@ private fun ChatList(
                 isPreviewHighlighted = typingNow.isNotEmpty(),
                 time = chatTime(chat.lastMessage?.createdAt ?: chat.lastActivityAt),
                 unreadCount = chat.unreadCount,
-                isOnline = chat.peer?.isOnline == true,
+                isOnline = isLive && chat.peer?.isOnline == true,
                 isMuted = chat.isMuted,
                 onClick = { onChatClick(chat) }
             )

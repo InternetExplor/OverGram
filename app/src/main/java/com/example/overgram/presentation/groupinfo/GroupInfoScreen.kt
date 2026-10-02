@@ -217,6 +217,7 @@ fun GroupInfoContent(
                             isOwner = member.id == state.ownerId,
                             canRemove = state.isOwner && member.id != state.currentUserId,
                             isRemoving = state.removingUserId == member.id,
+                            isLive = state.isLive,
                             onRemove = { onRemove(member) }
                         )
                     }
@@ -289,7 +290,7 @@ private fun Header(state: GroupInfoUiState) {
             modifier = Modifier.padding(horizontal = Dimens.ScreenPadding)
         )
         if (!state.isLoading || state.members.isNotEmpty()) {
-            val online = state.members.count { it.isOnline }
+            val online = if (state.isLive) state.members.count { it.isOnline } else 0
             Text(
                 text = buildString {
                     append(pluralStringResource(R.plurals.group_members_count, state.memberCount, state.memberCount))
@@ -324,6 +325,7 @@ private fun MemberRow(
     isOwner: Boolean,
     canRemove: Boolean,
     isRemoving: Boolean,
+    isLive: Boolean,
     onRemove: () -> Unit
 ) {
     Row(
@@ -332,7 +334,8 @@ private fun MemberRow(
             .padding(start = Dimens.ScreenPadding, end = Dimens.SpacingSm, top = Dimens.SpacingSm, bottom = Dimens.SpacingSm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Avatar(name = member.displayName, size = Dimens.AvatarMedium, isOnline = member.isOnline)
+        val showOnline = isLive && member.isOnline
+        Avatar(name = member.displayName, size = Dimens.AvatarMedium, isOnline = showOnline)
         Spacer(Modifier.width(Dimens.SpacingLg))
         Column(Modifier.weight(1f)) {
             Text(
@@ -343,9 +346,11 @@ private fun MemberRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = listOfNotNull(member.username?.let { "@$it" }, presenceText(member)).joinToString(" · "),
+                // Without a connection presence is stale: show just the username.
+                text = listOfNotNull(member.username?.let { "@$it" }, if (isLive) presenceText(member) else null)
+                    .joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (member.isOnline) PrimaryViolet else TextSecondary,
+                color = if (showOnline) PrimaryViolet else TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

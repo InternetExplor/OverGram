@@ -19,6 +19,9 @@ data class ChatListUiState(
     /** chatId → ids of users typing there right now. */
     val typing: Map<String, Set<String>> = emptyMap()
 ) {
+    /** Presence is only current while connected. */
+    val isLive: Boolean get() = connectionState == ConnectionState.Connected
+
     /** Peers of DIRECT chats that currently have a live connection, most recent chat first. */
     val onlineUsers: List<UserProfile>
         get() = chats.mapNotNull { it.peer }

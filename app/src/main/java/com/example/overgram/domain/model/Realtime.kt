@@ -1,6 +1,10 @@
 package com.example.overgram.domain.model
 
-enum class ConnectionState { Disconnected, Connecting, Connected }
+/**
+ * [WaitingForNetwork]: the device has no network at all; [Disconnected]/[Connecting]: network is
+ * there but the server isn't reachable / answering yet.
+ */
+enum class ConnectionState { WaitingForNetwork, Disconnected, Connecting, Connected }
 
 /**
  * Something that happened on the server, delivered live over the WebSocket (or replayed from
