@@ -4,44 +4,47 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.transitions.SlideTransition
+import com.example.overgram.domain.usecase.HasSessionUseCase
+import com.example.overgram.domain.usecase.SetRealtimeActiveUseCase
+import com.example.overgram.presentation.auth.PhoneEntryScreen
+import com.example.overgram.presentation.chatlist.ChatListScreen
 import com.example.overgram.ui.theme.OverGramTheme
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var hasSession: HasSessionUseCase
+
+    @Inject
+    lateinit var setRealtimeActive: SetRealtimeActiveUseCase
+
+    override fun onStart() {
+        super.onStart()
+        // Online while visible: the socket is also what makes peers see us as online.
+        if (hasSession()) setRealtimeActive(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // A rotation would only bounce the socket (and our presence) for nothing.
+        if (!isChangingConfigurations) setRealtimeActive(false)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val startScreen = if (hasSession()) ChatListScreen else PhoneEntryScreen
         setContent {
             OverGramTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                Navigator(startScreen) { navigator ->
+                    SlideTransition(navigator)
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    OverGramTheme {
-        Greeting("Android")
     }
 }
