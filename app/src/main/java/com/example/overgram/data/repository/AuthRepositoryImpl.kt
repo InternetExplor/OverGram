@@ -1,5 +1,6 @@
 package com.example.overgram.data.repository
 
+import com.example.overgram.data.local.db.OverGramDatabase
 import com.example.overgram.data.local.prefs.TokenPreferences
 import com.example.overgram.data.remote.api.AuthApi
 import com.example.overgram.data.remote.dto.ErrorDto
@@ -14,6 +15,8 @@ import com.example.overgram.domain.repository.AuthRepository
 import com.google.gson.Gson
 import com.google.gson.JsonParseException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import retrofit2.Response
 import timber.log.Timber
 import java.io.IOException
@@ -24,7 +27,8 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val api: AuthApi,
     private val tokenPreferences: TokenPreferences,
-    private val gson: Gson
+    private val gson: Gson,
+    private val database: OverGramDatabase
 ) : AuthRepository {
 
     override suspend fun requestOtp(phone: String): AuthOutcome<Unit> =
@@ -34,10 +38,14 @@ class AuthRepositoryImpl @Inject constructor(
         phone: String,
         code: String,
         deviceName: String
-    ): AuthOutcome<AuthResult> =
-        call { api.verifyOtp(OtpVerifyRequestDto(phone, code, deviceName)) }
+    ): AuthOutcome<AuthResult> {
+        val outcome = call { api.verifyOtp(OtpVerifyRequestDto(phone, code, deviceName)) }
             .map { it.toDomain() }
             .alsoOnSuccess(::persist)
+        // A fresh session may be another account: never show it the previous one's chats.
+        if (outcome is AuthOutcome.Success) clearLocalData()
+        return outcome
+    }
 
     override suspend fun refresh(refreshToken: String): AuthOutcome<AuthResult> {
         val outcome = call { api.refresh(RefreshRequestDto(refreshToken)) }
@@ -56,7 +64,17 @@ class AuthRepositoryImpl @Inject constructor(
         // Local logout must always happen, even if the server call fails.
         val outcome = call { api.logout() }.map { }
         tokenPreferences.clear()
+        clearLocalData()
         return outcome
+    }
+
+    /** Stored chats, messages and the outbox belong to the session that's ending. */
+    private suspend fun clearLocalData() {
+        try {
+            withContext(Dispatchers.IO) { database.clearAllTables() }
+        } catch (e: Exception) {
+            Timber.e(e, "Couldn't clear local data")
+        }
     }
 
     override fun hasSession(): Boolean = tokenPreferences.hasSession()

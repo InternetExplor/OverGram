@@ -7,20 +7,24 @@ import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.ConnectionState
-import com.example.overgram.domain.model.Message
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.RealtimeEvent
+import com.example.overgram.domain.model.SendState
+import com.example.overgram.domain.model.StoredMessage
 import com.example.overgram.domain.usecase.CreateGroupUseCase
 import com.example.overgram.domain.usecase.GetChatUseCase
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
-import com.example.overgram.domain.usecase.GetMessagesUseCase
 import com.example.overgram.domain.usecase.GetUsersUseCase
 import com.example.overgram.domain.usecase.LeaveChatUseCase
+import com.example.overgram.domain.usecase.LoadOlderMessagesUseCase
 import com.example.overgram.domain.usecase.MarkChatReadUseCase
 import com.example.overgram.domain.usecase.ObserveConnectionStateUseCase
+import com.example.overgram.domain.usecase.ObserveMessagesUseCase
 import com.example.overgram.domain.usecase.ObserveReadCursorsUseCase
 import com.example.overgram.domain.usecase.ObserveRealtimeEventsUseCase
+import com.example.overgram.domain.usecase.RefreshMessagesUseCase
 import com.example.overgram.domain.usecase.RenameGroupUseCase
+import com.example.overgram.domain.usecase.RetryMessageUseCase
 import com.example.overgram.domain.usecase.SendTextMessageUseCase
 import com.example.overgram.domain.usecase.SendTypingUseCase
 import com.example.overgram.domain.usecase.SetChatMutedUseCase
@@ -36,13 +40,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 @HiltViewModel(assistedFactory = ChatViewModel.Factory::class)
 class ChatViewModel @AssistedInject constructor(
     @Assisted private val args: ChatArgs,
-    private val getMessages: GetMessagesUseCase,
+    private val refreshMessages: RefreshMessagesUseCase,
+    private val loadOlderMessages: LoadOlderMessagesUseCase,
     private val sendTextMessage: SendTextMessageUseCase,
+    private val retryMessage: RetryMessageUseCase,
     private val markChatRead: MarkChatReadUseCase,
     private val getChat: GetChatUseCase,
     private val getUsers: GetUsersUseCase,
@@ -51,6 +56,7 @@ class ChatViewModel @AssistedInject constructor(
     private val leaveChat: LeaveChatUseCase,
     private val sendTyping: SendTypingUseCase,
     private val observeConnectionState: ObserveConnectionStateUseCase,
+    observeMessages: ObserveMessagesUseCase,
     observeEvents: ObserveRealtimeEventsUseCase,
     observeReadCursors: ObserveReadCursorsUseCase,
     getCurrentUserId: GetCurrentUserIdUseCase
@@ -63,11 +69,8 @@ class ChatViewModel @AssistedInject constructor(
 
     private val myUserId = getCurrentUserId()
 
-    /** Server-confirmed messages by clientMessageId. */
-    private val confirmed = HashMap<String, Message>()
-
-    /** Own messages not yet confirmed: being sent, or failed. */
-    private val pending = LinkedHashMap<String, ChatMessageItem>()
+    /** The chat's messages as stored on the device (the screen's single source of truth). */
+    private var stored: List<StoredMessage> = emptyList()
 
     /** Users whose profile was already requested, so each is fetched once. */
     private val requestedProfiles = HashSet<String>()
@@ -76,6 +79,9 @@ class ChatViewModel @AssistedInject constructor(
     private var pollingJob: Job? = null
     private var olderJob: Job? = null
     private var newestJob: Job? = null
+
+    /** The server said there's nothing older than what's stored. */
+    private var olderExhausted = false
 
     /** The screen is started: only then do incoming messages count as read. */
     private var isVisible = false
@@ -92,7 +98,16 @@ class ChatViewModel @AssistedInject constructor(
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     init {
-        loadNewest(initial = true)
+        // Stored history shows at once (also offline); the network only adds to it.
+        viewModelScope.launch {
+            observeMessages(args.chatId).collect { messages ->
+                stored = messages
+                if (messages.isNotEmpty()) _uiState.update { it.copy(isLoading = false, loadError = null) }
+                publish()
+                markReadUpToTop()
+            }
+        }
+        refreshNewest(initial = true)
         refreshDetails()
         viewModelScope.launch { observeEvents().collect(::onEvent) }
         viewModelScope.launch {
@@ -110,7 +125,7 @@ class ChatViewModel @AssistedInject constructor(
                 val connected = connection == ConnectionState.Connected
                 // Reconnected: the global catch-up replays events, but this chat's newest page
                 // is the cheapest way to be sure nothing on screen is stale.
-                if (connected && !wasConnected) loadNewest(initial = false)
+                if (connected && !wasConnected) refreshNewest(initial = false)
                 wasConnected = connected
             }
         }
@@ -122,46 +137,28 @@ class ChatViewModel @AssistedInject constructor(
         if (text.isNotBlank()) sendTyping(args.chatId)
     }
 
+    /** Queues the message: it shows right away and goes out now or once back online. */
     fun send() {
         val text = _uiState.value.input.trim()
         if (text.isEmpty()) return
-        val item = ChatMessageItem(
-            clientMessageId = UUID.randomUUID().toString(),
-            serverSeq = null,
-            senderId = myUserId.orEmpty(),
-            type = MessageType.TEXT,
-            body = text,
-            createdAt = System.currentTimeMillis(),
-            isOutgoing = true,
-            outgoingState = OutgoingState.Sending
-        )
-        pending[item.clientMessageId] = item
         _uiState.update { it.copy(input = "") }
-        publish()
-        deliver(item)
+        viewModelScope.launch { sendTextMessage(args.chatId, text) }
     }
 
-    /** Tap on a failed bubble: resend with the same clientMessageId, so it can't duplicate. */
+    /** Tap on a failed bubble: back in the queue with the same clientMessageId, so it can't duplicate. */
     fun retry(clientMessageId: String) {
-        val item = pending[clientMessageId]?.takeIf { it.outgoingState == OutgoingState.Failed } ?: return
-        val retrying = item.copy(outgoingState = OutgoingState.Sending)
-        pending[clientMessageId] = retrying
-        publish()
-        deliver(retrying)
+        viewModelScope.launch { retryMessage(clientMessageId) }
     }
 
     /** Called when the oldest loaded message scrolls into view. */
     fun loadOlder() {
-        val state = _uiState.value
-        if (!state.hasOlder || olderJob?.isActive == true) return
-        val oldestSeq = confirmed.values.minOfOrNull { it.serverSeq } ?: return
-
+        if (!_uiState.value.hasOlder || olderJob?.isActive == true) return
         _uiState.update { it.copy(isLoadingOlder = true) }
         olderJob = viewModelScope.launch {
-            when (val outcome = getMessages(args.chatId, beforeSeq = oldestSeq)) {
+            when (val outcome = loadOlderMessages(args.chatId)) {
                 is AuthOutcome.Success -> {
-                    outcome.value.messages.forEach { confirmed[it.clientMessageId] = it }
-                    _uiState.update { it.copy(isLoadingOlder = false, hasOlder = outcome.value.hasMore) }
+                    olderExhausted = !outcome.value
+                    _uiState.update { it.copy(isLoadingOlder = false) }
                     publish()
                 }
                 is AuthOutcome.Failure -> {
@@ -174,7 +171,7 @@ class ChatViewModel @AssistedInject constructor(
 
     fun retryLoad() {
         _uiState.update { it.copy(isLoading = true, loadError = null) }
-        loadNewest(initial = true)
+        refreshNewest(initial = true)
         refreshDetails()
     }
 
@@ -263,7 +260,7 @@ class ChatViewModel @AssistedInject constructor(
             while (isActive) {
                 val connected = observeConnectionState().value == ConnectionState.Connected
                 delay(if (connected) POLL_INTERVAL_CONNECTED_MS else POLL_INTERVAL_OFFLINE_MS)
-                loadNewest(initial = false)
+                refreshNewest(initial = false)
                 if (connected || ++tick % DETAILS_EVERY_N_POLLS == 0) refreshDetails()
             }
         }
@@ -275,22 +272,10 @@ class ChatViewModel @AssistedInject constructor(
         pollingJob = null
     }
 
+    /** Messages themselves arrive through the database (RealtimeSync); this handles the rest. */
     private fun onEvent(event: RealtimeEvent) {
         when (event) {
-            is RealtimeEvent.MessageNew -> if (event.chatId == args.chatId) {
-                val message = event.message
-                confirmed[message.clientMessageId] = message
-                pending.remove(message.clientMessageId) // our own echo confirms a pending send
-                clearTyping(message.senderId)
-                publish()
-                markReadUpToTop()
-            }
-            is RealtimeEvent.MessageEdited -> if (event.chatId == args.chatId) {
-                updateByServerId(event.serverId) { it.copy(body = event.body, isEdited = true) }
-            }
-            is RealtimeEvent.MessageDeleted -> if (event.chatId == args.chatId) {
-                updateByServerId(event.serverId) { it.copy(isDeleted = true) }
-            }
+            is RealtimeEvent.MessageNew -> if (event.chatId == args.chatId) clearTyping(event.message.senderId)
             is RealtimeEvent.ChatChanged -> if (event.chatId == args.chatId) refreshDetails()
             is RealtimeEvent.MemberChanged -> if (event.chatId == args.chatId) refreshDetails()
             is RealtimeEvent.Presence -> _uiState.update { state ->
@@ -306,17 +291,14 @@ class ChatViewModel @AssistedInject constructor(
             is RealtimeEvent.Typing -> if (event.chatId == args.chatId && event.userId != myUserId) {
                 showTyping(event.userId)
             }
-            RealtimeEvent.Resynced -> loadNewest(initial = true)
+            RealtimeEvent.Resynced -> refreshNewest(initial = true)
             RealtimeEvent.SessionEnded -> onError(AuthError.SessionExpired)
-            // Read cursors come through observeReadCursors; delivery ticks aren't shown.
-            is RealtimeEvent.ReadReceipt, is RealtimeEvent.Delivered -> Unit
+            // Edits/deletes are stored by RealtimeSync; read cursors come via observeReadCursors.
+            is RealtimeEvent.MessageEdited,
+            is RealtimeEvent.MessageDeleted,
+            is RealtimeEvent.ReadReceipt,
+            is RealtimeEvent.Delivered -> Unit
         }
-    }
-
-    private fun updateByServerId(serverId: Long, change: (Message) -> Message) {
-        val message = confirmed.values.firstOrNull { it.serverId == serverId } ?: return
-        confirmed[message.clientMessageId] = change(message)
-        publish()
     }
 
     private fun showTyping(userId: String) {
@@ -333,72 +315,18 @@ class ChatViewModel @AssistedInject constructor(
         _uiState.update { it.copy(typingUserIds = it.typingUserIds - userId) }
     }
 
-    private fun deliver(item: ChatMessageItem) {
-        viewModelScope.launch {
-            when (val outcome = sendTextMessage(args.chatId, item.clientMessageId, item.body.orEmpty())) {
-                is AuthOutcome.Success -> {
-                    pending.remove(item.clientMessageId)
-                    val sent = outcome.value
-                    // Keep a poll that already delivered the echo; it is the same message.
-                    confirmed.getOrPut(item.clientMessageId) {
-                        Message(
-                            clientMessageId = item.clientMessageId,
-                            serverId = sent.serverId,
-                            serverSeq = sent.serverSeq,
-                            senderId = myUserId.orEmpty(),
-                            type = MessageType.TEXT,
-                            body = item.body,
-                            createdAt = sent.createdAt,
-                            isEdited = false,
-                            isDeleted = false
-                        )
-                    }
-                }
-                is AuthOutcome.Failure -> {
-                    // A poll may have confirmed it meanwhile (lost response, message stored).
-                    if (pending.containsKey(item.clientMessageId)) {
-                        pending[item.clientMessageId] = item.copy(outgoingState = OutgoingState.Failed)
-                    }
-                    // Not a member any more, rate limited…: say why, the bubble alone can't.
-                    if (outcome.error !is AuthError.Network) onError(outcome.error)
-                }
-            }
-            publish()
-        }
-    }
-
-    private fun loadNewest(initial: Boolean) {
+    private fun refreshNewest(initial: Boolean) {
         if (!initial && newestJob?.isActive == true) return
         newestJob = viewModelScope.launch {
-            when (val outcome = getMessages(args.chatId)) {
-                is AuthOutcome.Success -> {
-                    val page = outcome.value
-                    val knownTop = confirmed.values.maxOfOrNull { it.serverSeq }
-                    val pageBottom = page.messages.minOfOrNull { it.serverSeq }
-                    // More than a page arrived since the last poll: drop the stale history
-                    // rather than show a hole in the middle of it.
-                    val hasGap = knownTop != null && pageBottom != null && pageBottom > knownTop + 1
-                    if (hasGap) confirmed.clear()
-
-                    page.messages.forEach {
-                        confirmed[it.clientMessageId] = it
-                        pending.remove(it.clientMessageId)
-                    }
-                    _uiState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                            loadError = null,
-                            hasOlder = if (initial || hasGap || knownTop == null) page.hasMore else state.hasOlder
-                        )
-                    }
-                    publish()
-                    markReadUpToTop()
-                }
+            when (val outcome = refreshMessages(args.chatId)) {
+                // The stored-messages flow delivers the result.
+                is AuthOutcome.Success -> _uiState.update { it.copy(isLoading = false, loadError = null) }
                 is AuthOutcome.Failure -> {
-                    if (initial && confirmed.isEmpty()) {
+                    // Nothing stored and nothing loaded: show the error instead of an empty chat.
+                    if (initial && stored.isEmpty()) {
                         _uiState.update { it.copy(isLoading = false, loadError = outcome.error) }
                     }
-                    // Background polls stay quiet unless the session is gone.
+                    // Background refreshes stay quiet unless the session is gone.
                     if (outcome.error.endsSession()) onError(outcome.error)
                 }
             }
@@ -427,30 +355,33 @@ class ChatViewModel @AssistedInject constructor(
 
     private fun markReadUpToTop() {
         if (!isVisible) return
-        val top = confirmed.values.maxOfOrNull { it.serverSeq } ?: return
+        val top = stored.mapNotNull { it.serverSeq }.maxOrNull() ?: return
         if (top <= lastMarkedReadSeq) return
         lastMarkedReadSeq = top
         viewModelScope.launch {
-            // Best effort: max-wins on the server, the next poll tries again on failure.
+            // Best effort: max-wins on the server, the next refresh tries again on failure.
             if (markChatRead(args.chatId, top) is AuthOutcome.Failure) {
                 lastMarkedReadSeq = minOf(lastMarkedReadSeq, top - 1)
             }
         }
     }
 
-    /** Rebuilds the visible list: pending messages on top (newest), then history by seq. */
+    /** Maps stored messages (already in display order) to bubbles. */
     private fun publish() {
-        val history = confirmed.values
-            .sortedByDescending { it.serverSeq }
-            .map { it.toItem() }
-        val outgoing = pending.values.sortedByDescending { it.createdAt }
-        _uiState.update { it.copy(messages = outgoing + history) }
+        val oldestSeq = stored.mapNotNull { it.serverSeq }.minOrNull()
+        _uiState.update {
+            it.copy(
+                messages = stored.map { message -> message.toItem() },
+                // seq starts at 1 per chat, so anything above it means older history exists.
+                hasOlder = !olderExhausted && oldestSeq != null && oldestSeq > 1
+            )
+        }
         if (args.type == ChatType.GROUP) loadMissingProfiles()
     }
 
     /** Group bubbles and system notes need the names of everyone they mention. */
     private fun loadMissingProfiles() {
-        val missing = confirmed.values
+        val missing = stored
             .flatMap { message ->
                 listOf(message.senderId) + message.systemEvent?.let { listOf(it.actorId) + it.targetUserIds }.orEmpty()
             }
@@ -464,11 +395,12 @@ class ChatViewModel @AssistedInject constructor(
         }
     }
 
-    private fun Message.toItem(): ChatMessageItem {
+    private fun StoredMessage.toItem(): ChatMessageItem {
         val isOwn = senderId == myUserId
+        val seq = serverSeq
         return ChatMessageItem(
             clientMessageId = clientMessageId,
-            serverSeq = serverSeq,
+            serverSeq = seq,
             senderId = senderId,
             type = type,
             body = body,
@@ -478,10 +410,13 @@ class ChatViewModel @AssistedInject constructor(
             isDeleted = isDeleted,
             outgoingState = when {
                 !isOwn -> null
-                serverSeq <= othersReadUpTo -> OutgoingState.Read
+                sendState == SendState.SENDING -> OutgoingState.Sending
+                sendState == SendState.FAILED -> OutgoingState.Failed
+                seq != null && seq <= othersReadUpTo -> OutgoingState.Read
                 else -> OutgoingState.Sent
             },
-            systemEvent = systemEvent
+            systemEvent = systemEvent,
+            failureReason = failureReason
         )
     }
 

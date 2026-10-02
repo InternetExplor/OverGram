@@ -164,6 +164,7 @@
     <string name="chat_input_placeholder">Message…</string>
     <string name="chat_empty">No messages here yet. Say hi!</string>
     <string name="chat_tap_to_retry">Not sent. Tap to retry.</string>
+    <string name="chat_failed_with_reason">Not sent: %1$s Tap to retry.</string>
     <string name="day_today">Today</string>
     <string name="day_yesterday">Yesterday</string>
     <string name="message_edited">edited</string>

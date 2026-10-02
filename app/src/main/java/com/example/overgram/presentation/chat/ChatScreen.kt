@@ -513,7 +513,8 @@ private fun MessageRow(item: ChatMessageItem, senderName: String?, onRetryMessag
         )
         if (failed) {
             Text(
-                text = stringResource(R.string.chat_tap_to_retry),
+                text = item.failureReason?.let { stringResource(R.string.chat_failed_with_reason, it) }
+                    ?: stringResource(R.string.chat_tap_to_retry),
                 style = MaterialTheme.typography.labelSmall,
                 color = ErrorRed,
                 modifier = Modifier.padding(horizontal = Dimens.ScreenPadding)

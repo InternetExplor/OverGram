@@ -4,24 +4,26 @@ import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatMember
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.GroupMembers
-import com.example.overgram.domain.model.MessagePage
-import com.example.overgram.domain.model.SentMessage
 import com.example.overgram.domain.model.UserProfile
+import kotlinx.coroutines.flow.Flow
 
 interface ChatRepository {
 
     /**
-     * The current user's chats, most recently active first, with the peer profile
-     * (name + online status) resolved for every DIRECT chat.
+     * The current user's chats as stored on the device, most recently active first, with peer
+     * profiles (name + last known presence) resolved. Emits immediately, then on every change.
      */
-    suspend fun getChats(): AuthOutcome<List<ChatSummary>>
+    fun observeChats(): Flow<List<ChatSummary>>
+
+    /** Replaces the stored chat list with the server's. */
+    suspend fun refreshChats(): AuthOutcome<Unit>
 
     /** A user's public profile, including online status. */
     suspend fun getUser(userId: String): AuthOutcome<UserProfile>
 
     /**
      * Best-effort profiles for several users (e.g. group message senders). Users whose profile
-     * can't be loaded are missing from the result; recently loaded ones come from a cache.
+     * can't be loaded are missing from the result; known ones come from the local cache.
      */
     suspend fun getUsers(userIds: Collection<String>): Map<String, UserProfile>
 
@@ -50,18 +52,6 @@ interface ChatRepository {
 
     /** The caller's own mute setting for a chat. */
     suspend fun setMuted(chatId: String, muted: Boolean): AuthOutcome<ChatSummary>
-
-    /** History page, newest first. [beforeSeq] = null for the newest page. */
-    suspend fun getMessages(chatId: String, beforeSeq: Long?): AuthOutcome<MessagePage>
-
-    /**
-     * Sends a TEXT message. Retrying with the same [clientMessageId] never duplicates it:
-     * the server returns the original result.
-     */
-    suspend fun sendText(chatId: String, clientMessageId: String, text: String): AuthOutcome<SentMessage>
-
-    /** Moves the caller's read cursor forward (never backwards). */
-    suspend fun markRead(chatId: String, upToSeq: Long): AuthOutcome<Unit>
 
     /** Users whose username starts with [query] (case-insensitive). */
     suspend fun searchUsers(query: String): AuthOutcome<List<UserProfile>>

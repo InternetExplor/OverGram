@@ -50,6 +50,37 @@ data class Message(
     val systemEvent: SystemEvent? = null
 )
 
+/** Delivery state of a message stored on this device. */
+enum class SendState {
+    /** Confirmed by the server. */
+    SENT,
+    /** Ours, queued: goes out as soon as there's a connection (survives app restarts). */
+    SENDING,
+    /** Ours, refused by the server (e.g. no longer a member). Can be retried by hand. */
+    FAILED
+}
+
+/**
+ * A message as stored on this device: server history plus our own outgoing messages that
+ * aren't confirmed yet ([serverSeq] null).
+ */
+data class StoredMessage(
+    val clientMessageId: String,
+    val chatId: String,
+    val serverId: Long?,
+    val serverSeq: Long?,
+    val senderId: String,
+    val type: MessageType,
+    val body: String?,
+    val createdAt: Long,
+    val isEdited: Boolean,
+    val isDeleted: Boolean,
+    val systemEvent: SystemEvent?,
+    val sendState: SendState,
+    /** Server's reason for a [SendState.FAILED] message. */
+    val failureReason: String? = null
+)
+
 /** One page of history, newest first. */
 data class MessagePage(
     val messages: List<Message>,

@@ -6,11 +6,12 @@ import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.RealtimeEvent
-import com.example.overgram.domain.usecase.GetChatsUseCase
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
 import com.example.overgram.domain.usecase.LogoutUseCase
+import com.example.overgram.domain.usecase.ObserveChatsUseCase
 import com.example.overgram.domain.usecase.ObserveConnectionStateUseCase
 import com.example.overgram.domain.usecase.ObserveRealtimeEventsUseCase
+import com.example.overgram.domain.usecase.RefreshChatsUseCase
 import com.example.overgram.domain.usecase.SetRealtimeActiveUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -25,7 +26,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ChatListViewModel @Inject constructor(
-    private val getChats: GetChatsUseCase,
+    private val refreshChats: RefreshChatsUseCase,
+    observeChats: ObserveChatsUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val setRealtimeActive: SetRealtimeActiveUseCase,
     observeEvents: ObserveRealtimeEventsUseCase,
@@ -46,6 +48,14 @@ class ChatListViewModel @Inject constructor(
     init {
         // Right after login the activity's onStart has already run, so connect from here too.
         setRealtimeActive(true)
+        // The stored list shows at once (also offline); the network only refreshes it.
+        viewModelScope.launch {
+            observeChats().collect { chats ->
+                _uiState.update {
+                    it.copy(chats = chats, isLoading = it.isLoading && chats.isEmpty())
+                }
+            }
+        }
         load()
         viewModelScope.launch { observeEvents().collect(::onEvent) }
         viewModelScope.launch {
@@ -120,15 +130,8 @@ class ChatListViewModel @Inject constructor(
             is RealtimeEvent.MemberChanged,
             is RealtimeEvent.ChatChanged,
             RealtimeEvent.Resynced -> scheduleReload()
-            is RealtimeEvent.Presence -> _uiState.update { state ->
-                state.copy(
-                    chats = state.chats.map { chat ->
-                        val peer = chat.peer
-                        if (peer?.id != event.userId) chat
-                        else chat.copy(peer = peer.copy(isOnline = event.isOnline, lastSeenAt = event.lastSeenAt))
-                    }
-                )
-            }
+            // Stored by RealtimeSync; the observed list picks it up.
+            is RealtimeEvent.Presence -> Unit
             is RealtimeEvent.Typing -> if (event.userId != _uiState.value.currentUserId) {
                 showTyping(event.chatId, event.userId)
             }
@@ -173,11 +176,10 @@ class ChatListViewModel @Inject constructor(
             loadJob?.cancel()
         }
         loadJob = viewModelScope.launch {
-            val outcome = getChats()
+            val outcome = refreshChats() // writes the stored list, which observeChats delivers
             _uiState.update { state ->
                 when (outcome) {
                     is AuthOutcome.Success -> state.copy(
-                        chats = outcome.value,
                         isLoading = false,
                         isRefreshing = false,
                         error = null

@@ -35,6 +35,8 @@ data class ChatMessageItem(
     val isDeleted: Boolean = false,
     /** Null for incoming messages. */
     val outgoingState: OutgoingState? = null,
+    /** Why the server refused an outgoing message ([OutgoingState.Failed]). */
+    val failureReason: String? = null,
     /** Parsed SYSTEM message, rendered as a centered note instead of a bubble. */
     val systemEvent: SystemEvent? = null
 )

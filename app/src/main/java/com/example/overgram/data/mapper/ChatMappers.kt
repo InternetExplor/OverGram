@@ -49,7 +49,7 @@ fun MessageDto.toDomain(gson: Gson): Message? {
 }
 
 /** SYSTEM bodies are a JSON *string*; anything unparseable is simply not rendered as an event. */
-private fun parseSystemEvent(gson: Gson, body: String?): SystemEvent? {
+fun parseSystemEvent(gson: Gson, body: String?): SystemEvent? {
     val dto = try {
         body?.let { gson.fromJson(it, SystemBodyDto::class.java) }
     } catch (e: JsonParseException) {
