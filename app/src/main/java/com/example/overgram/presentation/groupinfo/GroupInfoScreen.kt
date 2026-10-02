@@ -57,6 +57,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.example.overgram.R
 import com.example.overgram.domain.model.UserProfile
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chatlist.ChatListScreen
@@ -335,7 +336,12 @@ private fun MemberRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         val showOnline = isLive && member.isOnline
-        Avatar(name = member.displayName, size = Dimens.AvatarMedium, isOnline = showOnline)
+        Avatar(
+            name = member.displayName,
+            imageUrl = mediaUrl(member.avatarMediaId),
+            size = Dimens.AvatarMedium,
+            isOnline = showOnline
+        )
         Spacer(Modifier.width(Dimens.SpacingLg))
         Column(Modifier.weight(1f)) {
             Text(

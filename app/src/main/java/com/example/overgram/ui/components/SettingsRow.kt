@@ -47,7 +47,9 @@ import com.example.overgram.ui.theme.TextSecondary
  * @param subtitle Optional description text under the title.
  * @param iconBackgroundColor Background color for the rounded icon container.
  * @param iconTintColor Tint color for the icon.
- * @param onClick Click listener callback.
+ * @param titleColor Title colour (e.g. red for a destructive action).
+ * @param trailing Replaces the chevron (e.g. a progress indicator).
+ * @param onClick Click listener; null makes it an info row (no ripple, no chevron).
  */
 @Composable
 fun SettingsRow(
@@ -57,13 +59,15 @@ fun SettingsRow(
     subtitle: String? = null,
     iconBackgroundColor: Color = PrimaryViolet.copy(alpha = 0.2f),
     iconTintColor: Color = PrimaryViolet,
-    onClick: () -> Unit = {}
+    titleColor: Color = TextPrimary,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = {}
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .clip(CardShape)
-            .clickable(onClick = onClick),
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         color = SurfaceDark,
         shape = CardShape
     ) {
@@ -96,7 +100,7 @@ fun SettingsRow(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
+                    color = titleColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -107,7 +111,7 @@ fun SettingsRow(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -115,11 +119,14 @@ fun SettingsRow(
 
             Spacer(modifier = Modifier.width(Dimens.SpacingSm))
 
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "Open",
-                tint = TextSecondary
-            )
+            when {
+                trailing != null -> trailing()
+                onClick != null -> Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = TextSecondary
+                )
+            }
         }
     }
 }

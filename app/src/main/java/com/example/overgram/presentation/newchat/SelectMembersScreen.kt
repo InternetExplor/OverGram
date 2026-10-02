@@ -61,6 +61,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import com.example.overgram.R
 import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.UserProfile
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chat.ChatScreen
@@ -209,7 +210,13 @@ fun SelectMembersContent(
                             selected = true,
                             onClick = { onToggle(user) },
                             label = { Text(user.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            avatar = { Avatar(name = user.displayName, size = InputChipDefaults.AvatarSize) },
+                            avatar = {
+                                Avatar(
+                                    name = user.displayName,
+                                    imageUrl = mediaUrl(user.avatarMediaId),
+                                    size = InputChipDefaults.AvatarSize
+                                )
+                            },
                             trailingIcon = { Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp)) },
                             colors = InputChipDefaults.inputChipColors(
                                 selectedContainerColor = SurfaceElevatedDark,
@@ -273,7 +280,12 @@ private fun SelectableUserRow(user: UserProfile, isSelected: Boolean, onToggle: 
             .padding(start = Dimens.ScreenPadding, end = Dimens.SpacingSm, top = Dimens.SpacingSm, bottom = Dimens.SpacingSm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Avatar(name = user.displayName, size = Dimens.AvatarMedium, isOnline = user.isOnline)
+        Avatar(
+            name = user.displayName,
+            imageUrl = mediaUrl(user.avatarMediaId),
+            size = Dimens.AvatarMedium,
+            isOnline = user.isOnline
+        )
         Spacer(Modifier.width(Dimens.SpacingLg))
         Column(Modifier.weight(1f)) {
             Text(

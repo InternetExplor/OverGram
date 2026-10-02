@@ -21,14 +21,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -46,7 +42,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -73,13 +68,17 @@ import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.UserProfile
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chat.ChatScreen
 import com.example.overgram.presentation.newchat.NewChatScreen
+import com.example.overgram.presentation.profile.EditProfileScreen
+import com.example.overgram.presentation.settings.SettingsTab
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.ChatListItem
 import com.example.overgram.ui.components.OverGramBottomBar
+import com.example.overgram.ui.components.OverGramBottomTab
 import com.example.overgram.ui.components.OverGramTopBar
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.DividerColor
@@ -106,24 +105,48 @@ data object ChatListScreen : Screen {
             if (state.isSessionEnded) navigator.replaceAll(PhoneEntryScreen)
         }
 
-        ChatListContent(
-            state = state,
-            onRefresh = viewModel::refresh,
-            onRetry = viewModel::retry,
-            onErrorShown = viewModel::onErrorShown,
-            onLogout = viewModel::logout,
-            onNewChat = { navigator.push(NewChatScreen) },
-            onChatClick = { chat ->
-                navigator.push(
-                    ChatScreen(
-                        chatId = chat.id,
-                        type = chat.type,
-                        peerUserId = chat.peer?.id,
-                        title = (if (chat.type == ChatType.GROUP) chat.title else chat.peer?.displayName).orEmpty()
-                    )
+        // The home screen: the chat list (whose ViewModel keeps the live connection going)
+        // plus the Contacts and Settings tabs.
+        var tab by rememberSaveable { mutableStateOf(OverGramBottomTab.Chats) }
+        BackHandler(enabled = tab != OverGramBottomTab.Chats) { tab = OverGramBottomTab.Chats }
+        val bottomBar: @Composable () -> Unit = {
+            OverGramBottomBar(selectedTab = tab, onTabSelected = { tab = it })
+        }
+        val openChat: (ChatSummary) -> Unit = { chat ->
+            navigator.push(
+                ChatScreen(
+                    chatId = chat.id,
+                    type = chat.type,
+                    peerUserId = chat.peer?.id,
+                    title = (if (chat.type == ChatType.GROUP) chat.title else chat.peer?.displayName).orEmpty()
                 )
-            }
-        )
+            )
+        }
+
+        when (tab) {
+            OverGramBottomTab.Chats -> ChatListContent(
+                state = state,
+                onRefresh = viewModel::refresh,
+                onRetry = viewModel::retry,
+                onErrorShown = viewModel::onErrorShown,
+                onNewChat = { navigator.push(NewChatScreen) },
+                onChatClick = openChat,
+                bottomBar = bottomBar
+            )
+            OverGramBottomTab.Contacts -> ContactsTab(
+                chats = state.chats,
+                isLive = state.isLive,
+                currentUserId = state.currentUserId,
+                onChatClick = openChat,
+                onFindPeople = { navigator.push(NewChatScreen) },
+                bottomBar = bottomBar
+            )
+            OverGramBottomTab.Settings -> SettingsTab(
+                onEditProfile = { navigator.push(EditProfileScreen) },
+                onSessionEnded = { navigator.replaceAll(PhoneEntryScreen) },
+                bottomBar = bottomBar
+            )
+        }
     }
 }
 
@@ -134,11 +157,10 @@ fun ChatListContent(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onErrorShown: () -> Unit,
-    onLogout: () -> Unit,
     onChatClick: (ChatSummary) -> Unit,
-    onNewChat: () -> Unit
+    onNewChat: () -> Unit,
+    bottomBar: @Composable () -> Unit = {}
 ) {
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     var isSearchOpen by rememberSaveable { mutableStateOf(false) }
@@ -185,30 +207,22 @@ fun ChatListContent(
                                 tint = TextPrimary
                             )
                         }
-                        OverflowMenu(onLogout = onLogout)
                     }
                 )
             }
         },
-        bottomBar = {
-            OverGramBottomBar(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
-            )
-        },
+        bottomBar = bottomBar,
         floatingActionButton = {
-            if (selectedTab == 0) {
-                FloatingActionButton(
-                    onClick = onNewChat,
-                    containerColor = PrimaryViolet,
-                    contentColor = TextPrimary,
-                    shape = CircleShape
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = stringResource(R.string.chats_new_message)
-                    )
-                }
+            FloatingActionButton(
+                onClick = onNewChat,
+                containerColor = PrimaryViolet,
+                contentColor = TextPrimary,
+                shape = CircleShape
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = stringResource(R.string.chats_new_message)
+                )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -317,30 +331,6 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onClose: (
 }
 
 @Composable
-private fun OverflowMenu(onLogout: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                Icons.Default.MoreVert,
-                contentDescription = stringResource(R.string.chats_more_options),
-                tint = TextPrimary
-            )
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.chats_logout)) },
-                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) },
-                onClick = {
-                    expanded = false
-                    onLogout()
-                }
-            )
-        }
-    }
-}
-
-@Composable
 private fun ChatList(
     chats: List<ChatSummary>,
     onlineUsers: List<UserProfile>,
@@ -359,6 +349,7 @@ private fun ChatList(
             val typingNow = typing[chat.id].orEmpty()
             ChatListItem(
                 name = chatTitle(chat),
+                avatarUrl = mediaUrl(chat.peer?.avatarMediaId),
                 lastMessage = if (typingNow.isNotEmpty()) {
                     stringResource(R.string.typing_short)
                 } else {
@@ -398,7 +389,12 @@ private fun OnlineUsersRow(users: List<UserProfile>) {
                     modifier = Modifier.width(Dimens.AvatarLarge),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Avatar(name = user.displayName, size = Dimens.AvatarMedium, isOnline = true)
+                    Avatar(
+                        name = user.displayName,
+                        imageUrl = mediaUrl(user.avatarMediaId),
+                        size = Dimens.AvatarMedium,
+                        isOnline = true
+                    )
                     Spacer(Modifier.height(Dimens.SpacingXs))
                     Text(
                         text = user.displayName.substringBefore(' '),
@@ -483,7 +479,7 @@ fun ChatListContentPreview() {
     OverGramTheme {
         ChatListContent(
             state = ChatListUiState(chats = previewChats, currentUserId = "me", isLoading = false),
-            onRefresh = {}, onRetry = {}, onErrorShown = {}, onLogout = {}, onChatClick = {}, onNewChat = {}
+            onRefresh = {}, onRetry = {}, onErrorShown = {}, onChatClick = {}, onNewChat = {}
         )
     }
 }
@@ -494,7 +490,7 @@ fun ChatListEmptyPreview() {
     OverGramTheme {
         ChatListContent(
             state = ChatListUiState(isLoading = false),
-            onRefresh = {}, onRetry = {}, onErrorShown = {}, onLogout = {}, onChatClick = {}, onNewChat = {}
+            onRefresh = {}, onRetry = {}, onErrorShown = {}, onChatClick = {}, onNewChat = {}
         )
     }
 }

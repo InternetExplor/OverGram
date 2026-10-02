@@ -7,7 +7,6 @@ import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.RealtimeEvent
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
-import com.example.overgram.domain.usecase.LogoutUseCase
 import com.example.overgram.domain.usecase.ObserveChatsUseCase
 import com.example.overgram.domain.usecase.ObserveConnectionStateUseCase
 import com.example.overgram.domain.usecase.ObserveRealtimeEventsUseCase
@@ -28,7 +27,6 @@ import javax.inject.Inject
 class ChatListViewModel @Inject constructor(
     private val refreshChats: RefreshChatsUseCase,
     observeChats: ObserveChatsUseCase,
-    private val logoutUseCase: LogoutUseCase,
     private val setRealtimeActive: SetRealtimeActiveUseCase,
     observeEvents: ObserveRealtimeEventsUseCase,
     observeConnectionState: ObserveConnectionStateUseCase,
@@ -104,17 +102,6 @@ class ChatListViewModel @Inject constructor(
     fun stopPolling() {
         pollingJob?.cancel()
         pollingJob = null
-    }
-
-    fun logout() {
-        stopPolling()
-        loadJob?.cancel()
-        setRealtimeActive(false)
-        viewModelScope.launch {
-            // Local logout always happens, so the outcome doesn't matter here.
-            logoutUseCase()
-            _uiState.update { it.copy(isSessionEnded = true) }
-        }
     }
 
     private fun onEvent(event: RealtimeEvent) {

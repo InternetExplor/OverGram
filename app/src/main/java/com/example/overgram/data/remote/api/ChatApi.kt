@@ -13,7 +13,6 @@ import com.example.overgram.data.remote.dto.SendMessageRequestDto
 import com.example.overgram.data.remote.dto.SendMessageResultDto
 import com.example.overgram.data.remote.dto.SeqCursorDto
 import com.example.overgram.data.remote.dto.UpdateChatRequestDto
-import com.example.overgram.data.remote.dto.UpdateMeRequestDto
 import com.example.overgram.data.remote.dto.UserPublicDto
 import com.example.overgram.data.remote.dto.UserSearchResultDto
 import retrofit2.Response
@@ -39,13 +38,6 @@ interface ChatApi {
     /** Public profile, including `online` / `lastSeenAt`. */
     @GET("v1/users/{id}")
     suspend fun getUser(@Path("id") userId: String): Response<UserPublicDto>
-
-    /** The caller's own profile (`UserMe`; the extra `phone` field is ignored). */
-    @GET("v1/users/me")
-    suspend fun getMe(): Response<UserPublicDto>
-
-    @PATCH("v1/users/me")
-    suspend fun updateMe(@Body body: UpdateMeRequestDto): Response<UserPublicDto>
 
     /** Case-insensitive prefix match on username only. */
     @GET("v1/users/search")

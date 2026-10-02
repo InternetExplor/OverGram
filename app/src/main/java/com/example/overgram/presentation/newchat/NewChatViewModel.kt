@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.MyProfile
 import com.example.overgram.domain.model.UserProfile
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
 import com.example.overgram.domain.usecase.GetMyProfileUseCase
@@ -28,7 +29,7 @@ data class NewChatUiState(
     val isSearching: Boolean = false,
     /** The query [results] belong to; null before the first search. */
     val searchedQuery: String? = null,
-    val me: UserProfile? = null,
+    val me: MyProfile? = null,
     /** User whose chat is being opened (shows a spinner on that row). */
     val openingUserId: String? = null,
     val error: AuthError? = null,

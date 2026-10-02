@@ -73,6 +73,7 @@ import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SystemEvent
 import com.example.overgram.domain.model.SystemEventKind
 import com.example.overgram.domain.model.UserProfile
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chatlist.connectionStatusText
@@ -244,6 +245,7 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
                 leadContent = {
                     Avatar(
                         name = state.title,
+                        imageUrl = mediaUrl(state.peer?.avatarMediaId),
                         size = Dimens.AvatarSmall,
                         isOnline = state.isLive && state.peer?.isOnline == true
                     )

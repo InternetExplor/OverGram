@@ -53,7 +53,9 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.example.overgram.R
+import com.example.overgram.domain.model.MyProfile
 import com.example.overgram.domain.model.UserProfile
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chat.ChatScreen
@@ -218,7 +220,7 @@ private fun NewGroupRow(onClick: () -> Unit) {
 }
 
 @Composable
-private fun MyUsernameRow(me: UserProfile?, onEdit: () -> Unit) {
+private fun MyUsernameRow(me: MyProfile?, onEdit: () -> Unit) {
     if (me == null) return
     Row(
         modifier = Modifier
@@ -251,7 +253,12 @@ private fun UserRow(user: UserProfile, isOpening: Boolean, onClick: () -> Unit) 
             .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SpacingMd),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Avatar(name = user.displayName, size = Dimens.AvatarMedium, isOnline = user.isOnline)
+        Avatar(
+            name = user.displayName,
+            imageUrl = mediaUrl(user.avatarMediaId),
+            size = Dimens.AvatarMedium,
+            isOnline = user.isOnline
+        )
         Spacer(Modifier.width(Dimens.SpacingLg))
         Column(Modifier.weight(1f)) {
             Text(
@@ -365,7 +372,7 @@ fun NewChatContentPreview() {
             state = NewChatUiState(
                 query = "demo",
                 searchedQuery = "demo",
-                me = UserProfile("me", "Tadashi", null, null, isOnline = true, lastSeenAt = null),
+                me = MyProfile("me", "Tadashi", null, null, phone = "+998900000001"),
                 results = listOf(
                     UserProfile("u2", "Demo User 2", "demo_user_2", null, isOnline = true, lastSeenAt = null),
                     UserProfile("u3", "Demo User 3", "demo_user_3", null, isOnline = false, lastSeenAt = null)

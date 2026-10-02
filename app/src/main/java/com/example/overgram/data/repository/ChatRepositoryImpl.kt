@@ -13,7 +13,6 @@ import com.example.overgram.data.remote.dto.ChatSettingsRequestDto
 import com.example.overgram.data.remote.dto.CreateGroupRequestDto
 import com.example.overgram.data.remote.dto.DirectChatRequestDto
 import com.example.overgram.data.remote.dto.UpdateChatRequestDto
-import com.example.overgram.data.remote.dto.UpdateMeRequestDto
 import com.example.overgram.data.remote.mapNotNull
 import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatMember
@@ -184,12 +183,6 @@ class ChatRepositoryImpl @Inject constructor(
 
     override suspend fun openDirectChat(peerUserId: String): AuthOutcome<String> =
         apiCaller.call { api.getOrCreateDirectChat(DirectChatRequestDto(peerUserId)) }.mapNotNull { it?.id }
-
-    override suspend fun getMe(): AuthOutcome<UserProfile> =
-        apiCaller.call { api.getMe() }.mapNotNull { it?.toDomain() }
-
-    override suspend fun setUsername(username: String): AuthOutcome<UserProfile> =
-        apiCaller.call { api.updateMe(UpdateMeRequestDto(username = username)) }.mapNotNull { it?.toDomain() }
 
     override fun currentUserId(): String? = tokenPreferences.getUserId()
 

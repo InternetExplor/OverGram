@@ -60,6 +60,22 @@ fun Avatar(
             .then(clickModifier),
         contentAlignment = Alignment.Center
     ) {
+        // Initials always sit underneath: they show while the photo loads, and stay if it
+        // can't be loaded (no access, offline, not ready).
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(getAvatarBackgroundColor(name)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = getInitials(name),
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = (size.value * 0.4f).sp
+            )
+        }
         if (!imageUrl.isNullOrBlank()) {
             AsyncImage(
                 model = imageUrl,
@@ -69,23 +85,6 @@ fun Avatar(
                     .size(size)
                     .clip(CircleShape)
             )
-        } else {
-            val initials = getInitials(name)
-            val backgroundColor = getAvatarBackgroundColor(name)
-            Box(
-                modifier = Modifier
-                    .size(size)
-                    .clip(CircleShape)
-                    .background(backgroundColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = initials,
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = (size.value * 0.4f).sp
-                )
-            }
         }
 
         if (isOnline) {

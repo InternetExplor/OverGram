@@ -54,6 +54,10 @@ interface MessageDao {
     @Query("UPDATE messages SET isDeleted = 1 WHERE serverId = :serverId")
     suspend fun applyDelete(serverId: Long)
 
+    /** Confirmed history of every chat; the outbox (SENDING/FAILED) is kept. */
+    @Query("DELETE FROM messages WHERE sendState = 'SENT'")
+    suspend fun deleteAllConfirmed()
+
     /** Confirmed history only: queued outgoing messages survive a history reset. */
     @Query("DELETE FROM messages WHERE chatId = :chatId AND serverSeq IS NOT NULL")
     suspend fun clearHistory(chatId: String)
@@ -115,6 +119,9 @@ interface UserDao {
 
     @Upsert
     suspend fun upsert(users: List<UserEntity>)
+
+    @Query("DELETE FROM users")
+    suspend fun deleteAll()
 
     @Query("UPDATE users SET isOnline = :isOnline, lastSeenAt = :lastSeenAt WHERE id = :userId")
     suspend fun updatePresence(userId: String, isOnline: Boolean, lastSeenAt: Long?)

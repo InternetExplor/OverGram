@@ -94,6 +94,51 @@
 
     <string name="action_back">Back</string>
 
+    <!-- Home tabs -->
+    <string name="tab_chats">Chats</string>
+    <string name="tab_contacts">Contacts</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Contacts -->
+    <string name="contacts_find_people">Find people</string>
+    <string name="contacts_empty">People you chat with appear here. Use “Find people” to start a conversation.</string>
+
+    <!-- Settings -->
+    <string name="settings_no_username">Set a username</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_edit_profile">Edit profile</string>
+    <string name="settings_edit_profile_subtitle">Name, username and photo</string>
+    <string name="settings_section_storage">Data and storage</string>
+    <string name="settings_clear_cache">Clear cache</string>
+    <string name="settings_clear_cache_subtitle">Free up space. Chats and history download again when you open them.</string>
+    <string name="settings_clear_cache_confirm_title">Clear cache?</string>
+    <string name="settings_clear_cache_confirm_text">Stored chats and messages are removed from this device. Nothing is deleted on the server, and unsent messages are kept.</string>
+    <string name="settings_clear_cache_confirm">Clear</string>
+    <string name="settings_cache_cleared">Cache cleared</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_app_version">Version %1$s</string>
+    <string name="settings_server">Server</string>
+    <string name="settings_server_version">Relay %1$s · %2$s</string>
+    <string name="settings_server_unknown">Not reachable right now</string>
+    <string name="settings_push_available">push available</string>
+    <string name="settings_push_unavailable">push unavailable</string>
+    <string name="settings_logout">Log out</string>
+    <string name="settings_logout_confirm_title">Log out?</string>
+    <string name="settings_logout_confirm_text">Chats and messages stored on this device will be removed. You can log in again with your phone number.</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Edit profile</string>
+    <string name="profile_name">Name</string>
+    <string name="profile_name_required">Name can\'t be empty</string>
+    <string name="profile_username">Username</string>
+    <string name="profile_username_hint">3–32 characters: letters, digits and _. People can find you by it.</string>
+    <string name="profile_username_cannot_remove">A username can be changed but not removed</string>
+    <string name="profile_phone">Phone</string>
+    <string name="profile_phone_hint">Only you can see your number.</string>
+    <string name="profile_change_photo">Change photo</string>
+    <string name="profile_choose_photo">Choose photo</string>
+    <string name="profile_remove_photo">Remove photo</string>
+
     <!-- Realtime -->
     <string name="connection_connecting">Connecting…</string>
     <string name="connection_waiting_for_network">Waiting for network…</string>

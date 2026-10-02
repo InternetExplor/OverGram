@@ -112,12 +112,6 @@ data class DirectChatRequestDto(
     @SerializedName("peerUserId") val peerUserId: String
 )
 
-/** `PATCH /v1/users/me`: null fields are omitted by Gson, i.e. left unchanged. */
-data class UpdateMeRequestDto(
-    @SerializedName("username") val username: String? = null,
-    @SerializedName("displayName") val displayName: String? = null
-)
-
 /** Relay's `UserPublic`: a profile without the phone number. */
 data class UserPublicDto(
     @SerializedName("id") val id: String?,
