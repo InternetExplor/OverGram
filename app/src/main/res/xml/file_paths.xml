@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files other apps may open (via FileProvider): downloaded and sent attachments. -->
+<paths>
+    <cache-path name="media" path="media/" />
+</paths>

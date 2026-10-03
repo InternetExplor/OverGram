@@ -20,6 +20,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "API_BASE_URL", "\"https://relay.zokirov-mob-dev.uz/\"")
     }
 
     buildTypes {
@@ -35,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -42,6 +45,8 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
@@ -59,6 +64,7 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.60")
     ksp("com.google.dagger:hilt-android-compiler:2.60")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
     // Voyager (навигация)
     implementation("cafe.adriel.voyager:voyager-navigator:1.1.0-beta03")
@@ -72,12 +78,18 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Room (локальное хранилище / история сообщений)
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.2")
+    implementation("androidx.room:room-ktx:2.7.2")
+    ksp("androidx.room:room-compiler:2.7.2")
 
     // Coil (загрузка изображений/аватаров)
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // Вложения: видеоплеер (стрим с Range-запросами через наш OkHttp) и EXIF-поворот фото
+    implementation("androidx.media3:media3-exoplayer:1.8.0")
+    implementation("androidx.media3:media3-ui:1.8.0")
+    implementation("androidx.media3:media3-datasource-okhttp:1.8.0")
+    implementation("androidx.exifinterface:exifinterface:1.4.1")
 
     // DataStore (настройки пользователя)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
