@@ -21,6 +21,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OverGramDatabase =
         Room.databaseBuilder(context, OverGramDatabase::class.java, OverGramDatabase.NAME)
+            .addMigrations(OverGramDatabase.MIGRATION_1_2)
             // The DB is only a cache of server data (plus the outbox): rebuilding it is safe.
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()

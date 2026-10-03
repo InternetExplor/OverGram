@@ -180,17 +180,23 @@ class RealtimeClient @Inject constructor(
     }
 
     /**
-     * Sends a TEXT message and waits for its `ack`/`nack`. Returns null when the socket is down or
+     * Sends a message and waits for its `ack`/`nack`. Returns null when the socket is down or
      * no answer came in time: the caller then falls back to REST with the same clientMessageId,
      * which the server deduplicates.
      */
-    suspend fun sendMessage(chatId: String, clientMessageId: String, text: String): SendResult? {
+    suspend fun sendMessage(
+        chatId: String,
+        clientMessageId: String,
+        type: MessageType,
+        body: String?,
+        mediaIds: List<String> = emptyList()
+    ): SendResult? {
         if (socketState.value != ConnectionState.Connected) return null
         val ws = socket ?: return null
         val deferred = CompletableDeferred<SendResult?>()
         pendingAcks[clientMessageId] = deferred
         return try {
-            val frame = SendFrame(clientMessageId, chatId, MessageType.TEXT.name, text)
+            val frame = SendFrame(clientMessageId, chatId, type.name, body, mediaIds)
             if (!ws.send(gson.toJson(frame))) return null
             withTimeoutOrNull(ACK_TIMEOUT_MS) { deferred.await() }
         } finally {

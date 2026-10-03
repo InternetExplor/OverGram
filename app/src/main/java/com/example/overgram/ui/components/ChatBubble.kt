@@ -49,7 +49,7 @@ import com.example.overgram.ui.theme.TextPrimary
 /** Delivery state of an outgoing message, shown as an icon next to the timestamp. */
 enum class BubbleStatus { Sending, Sent, Read, Failed }
 
-private val MetaSize = 12.sp
+internal val MetaSize = 12.sp
 
 /**
  * A message bubble, Telegram style: flat colors from the theme (`chat_outBubble` /
@@ -118,45 +118,68 @@ fun ChatBubble(
                         fontStyle = if (isPlaceholder) FontStyle.Italic else FontStyle.Normal
                     )
                 }
-                Row(
+                BubbleMeta(
+                    text = edited + timestamp,
+                    isSent = isSent,
+                    status = status,
+                    color = metaColor,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(bottom = 1.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = edited + timestamp,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = MetaSize,
-                        color = metaColor
-                    )
-                    if (isSent) {
-                        Spacer(Modifier.width(3.dp))
-                        Icon(
-                            imageVector = when (status) {
-                                BubbleStatus.Sending -> Icons.Default.Schedule
-                                BubbleStatus.Sent -> Icons.Default.Done
-                                BubbleStatus.Read -> Icons.Default.DoneAll
-                                BubbleStatus.Failed -> Icons.Default.ErrorOutline
-                            },
-                            contentDescription = stringResource(
-                                when (status) {
-                                    BubbleStatus.Sending -> R.string.message_status_sending
-                                    BubbleStatus.Sent -> R.string.message_status_sent
-                                    BubbleStatus.Read -> R.string.message_status_read
-                                    BubbleStatus.Failed -> R.string.message_status_failed
-                                }
-                            ),
-                            tint = when (status) {
-                                BubbleStatus.Failed -> ErrorRed
-                                BubbleStatus.Sending -> metaColor
-                                else -> OutgoingCheck
-                            },
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
-                }
+                        .padding(bottom = 1.dp)
+                )
             }
+        }
+    }
+}
+
+/** The text a bubble's meta shows, so captions can reserve room for it at the end of their last line. */
+@Composable
+internal fun bubbleMetaText(timestamp: String, isEdited: Boolean, isSent: Boolean): String {
+    val edited = if (isEdited) stringResource(R.string.message_edited) + " " else ""
+    return edited + timestamp + if (isSent) "  " else ""
+}
+
+/** "edited 16:45 ✓✓": time and delivery ticks, in the bottom-right corner of every bubble. */
+@Composable
+internal fun BubbleMeta(
+    text: String,
+    isSent: Boolean,
+    status: BubbleStatus,
+    color: Color,
+    modifier: Modifier = Modifier,
+    checkColor: Color = OutgoingCheck
+) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = MetaSize,
+            color = color
+        )
+        if (isSent) {
+            Spacer(Modifier.width(3.dp))
+            Icon(
+                imageVector = when (status) {
+                    BubbleStatus.Sending -> Icons.Default.Schedule
+                    BubbleStatus.Sent -> Icons.Default.Done
+                    BubbleStatus.Read -> Icons.Default.DoneAll
+                    BubbleStatus.Failed -> Icons.Default.ErrorOutline
+                },
+                contentDescription = stringResource(
+                    when (status) {
+                        BubbleStatus.Sending -> R.string.message_status_sending
+                        BubbleStatus.Sent -> R.string.message_status_sent
+                        BubbleStatus.Read -> R.string.message_status_read
+                        BubbleStatus.Failed -> R.string.message_status_failed
+                    }
+                ),
+                tint = when (status) {
+                    BubbleStatus.Failed -> ErrorRed
+                    BubbleStatus.Sending -> color
+                    else -> checkColor
+                },
+                modifier = Modifier.size(15.dp)
+            )
         }
     }
 }

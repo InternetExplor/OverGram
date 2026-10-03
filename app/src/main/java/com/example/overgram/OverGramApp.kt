@@ -3,6 +3,10 @@ package com.example.overgram
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.example.overgram.data.local.prefs.TokenPreferences
+import com.example.overgram.data.media.LocalMediaStore
+import com.example.overgram.data.media.VideoFrameFetcher
+import com.example.overgram.data.media.VideoFrameKeyer
 import com.example.overgram.data.realtime.RealtimeSync
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.OkHttpClient
@@ -19,6 +23,12 @@ class OverGramApp : Application(), ImageLoaderFactory {
     @Inject
     lateinit var okHttpClient: OkHttpClient
 
+    @Inject
+    lateinit var mediaStore: LocalMediaStore
+
+    @Inject
+    lateinit var tokenPreferences: TokenPreferences
+
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) {
@@ -28,11 +38,18 @@ class OverGramApp : Application(), ImageLoaderFactory {
         realtimeSync.start()
     }
 
-    /** Coil loads avatars from `GET /v1/media/{id}`, which needs auth. Media ids never change content. */
+    /**
+     * Coil loads avatars and photos from `GET /v1/media/{id}`, which needs auth, and video previews
+     * through [VideoFrameFetcher]. Media ids never change content.
+     */
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             .okHttpClient(okHttpClient)
             .crossfade(true)
             .respectCacheHeaders(false)
+            .components {
+                add(VideoFrameKeyer())
+                add(VideoFrameFetcher.Factory(mediaStore, tokenPreferences))
+            }
             .build()
 }

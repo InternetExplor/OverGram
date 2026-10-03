@@ -69,6 +69,8 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.example.overgram.R
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.MediaAttachment
+import com.example.overgram.domain.model.MediaKind
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SystemEvent
 import com.example.overgram.domain.model.SystemEventKind
@@ -84,6 +86,8 @@ import com.example.overgram.presentation.chatlist.joinNames
 import com.example.overgram.presentation.chatlist.presenceText
 import com.example.overgram.presentation.chatlist.systemEventText
 import com.example.overgram.presentation.groupinfo.GroupInfoScreen
+import com.example.overgram.presentation.media.PhotoViewerScreen
+import com.example.overgram.presentation.media.VideoPlayerScreen
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.BubbleStatus
 import com.example.overgram.ui.components.ChatBubble
@@ -150,7 +154,17 @@ data class ChatScreen(
                 onToggleMute = viewModel::toggleMute,
                 onRename = viewModel::openRenameDialog,
                 onGroupInfo = { navigator.push(GroupInfoScreen(chatId, state.title)) },
-                onLeave = viewModel::leave
+                onLeave = viewModel::leave,
+                onSendMedia = viewModel::sendMedia,
+                onCancelSending = viewModel::cancelSending,
+                onOpenMedia = { media ->
+                    navigator.push(
+                        if (media.kind == MediaKind.VIDEO) VideoPlayerScreen(media.mediaId, media.localPath)
+                        else PhotoViewerScreen(media.mediaId, media.localPath)
+                    )
+                },
+                onMediaNotice = viewModel::showMediaNotice,
+                onMediaNoticeShown = viewModel::onMediaNoticeShown
             )
         )
 
@@ -177,7 +191,13 @@ data class ChatActions(
     val onToggleMute: () -> Unit = {},
     val onRename: () -> Unit = {},
     val onGroupInfo: () -> Unit = {},
-    val onLeave: () -> Unit = {}
+    val onLeave: () -> Unit = {},
+    val onSendMedia: (uris: List<String>, caption: String?, asFile: Boolean) -> Unit = { _, _, _ -> },
+    val onCancelSending: (String) -> Unit = {},
+    /** A photo or video tapped: open it full screen. */
+    val onOpenMedia: (MediaAttachment) -> Unit = {},
+    val onMediaNotice: (MediaNotice) -> Unit = {},
+    val onMediaNoticeShown: () -> Unit = {}
 )
 
 /** A row of the message list: a bubble, a system note, or a day separator. */
@@ -228,11 +248,19 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
             actions.onErrorShown()
         }
     }
+    val mediaNoticeText = state.mediaNotice?.let { mediaNoticeMessage(it) }
+    LaunchedEffect(state.mediaNotice) {
+        if (mediaNoticeText != null) {
+            snackbarHostState.showSnackbar(mediaNoticeText)
+            actions.onMediaNoticeShown()
+        }
+    }
 
     val focusManager = LocalFocusManager.current
     var isEmojiPanelOpen by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = isEmojiPanelOpen) { isEmojiPanelOpen = false }
     var isLeaveDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var isAttachMenuOpen by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -275,6 +303,10 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
                 onValueChange = actions.onInputChange,
                 onSendClick = actions.onSend,
                 modifier = Modifier.imePadding(),
+                onAttachClick = {
+                    focusManager.clearFocus()
+                    isAttachMenuOpen = true
+                },
                 onEmojiClick = {
                     if (!isEmojiPanelOpen) focusManager.clearFocus() // hides the keyboard
                     isEmojiPanelOpen = !isEmojiPanelOpen
@@ -327,6 +359,12 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
             }
         }
     }
+
+    AttachFlow(
+        isMenuOpen = isAttachMenuOpen,
+        onDismissMenu = { isAttachMenuOpen = false },
+        onSend = actions.onSendMedia
+    )
 
     if (isLeaveDialogOpen) {
         LeaveDialog(
@@ -448,7 +486,8 @@ private fun MessageList(state: ChatUiState, actions: ChatActions) {
                         state.profiles[row.item.senderId]?.displayName
                             ?: stringResource(R.string.system_someone)
                     } else null,
-                    onRetryMessage = actions.onRetryMessage
+                    uploadProgress = state.uploadProgress[row.item.clientMessageId],
+                    actions = actions
                 )
                 is ChatRow.System -> SystemNote(
                     text = row.item.systemEvent?.let { event ->
@@ -498,25 +537,44 @@ private fun StickToNewest(listState: LazyListState, newest: ChatMessageItem?) {
 }
 
 @Composable
-private fun MessageRow(item: ChatMessageItem, senderName: String?, onRetryMessage: (String) -> Unit) {
+private fun MessageRow(
+    item: ChatMessageItem,
+    senderName: String?,
+    uploadProgress: Float?,
+    actions: ChatActions
+) {
     val failed = item.outgoingState == OutgoingState.Failed
+    val status = when (item.outgoingState) {
+        OutgoingState.Sending -> BubbleStatus.Sending
+        OutgoingState.Failed -> BubbleStatus.Failed
+        OutgoingState.Read -> BubbleStatus.Read
+        OutgoingState.Sent, null -> BubbleStatus.Sent
+    }
     Column(horizontalAlignment = Alignment.End, modifier = Modifier.fillMaxWidth()) {
-        ChatBubble(
-            message = messageText(item),
-            timestamp = formatClock(item.createdAt),
-            isSent = item.isOutgoing,
-            status = when (item.outgoingState) {
-                OutgoingState.Sending -> BubbleStatus.Sending
-                OutgoingState.Failed -> BubbleStatus.Failed
-                OutgoingState.Read -> BubbleStatus.Read
-                OutgoingState.Sent, null -> BubbleStatus.Sent
-            },
-            isEdited = item.isEdited && !item.isDeleted,
-            isPlaceholder = item.isDeleted,
-            senderName = senderName,
-            senderColor = senderColor(item.senderId),
-            onClick = if (failed) ({ onRetryMessage(item.clientMessageId) }) else null
-        )
+        val media = item.media
+        if (media != null && !item.isDeleted) {
+            MediaMessageBubble(
+                item = item,
+                media = media,
+                senderName = senderName,
+                senderColor = senderColor(item.senderId),
+                status = status,
+                uploadProgress = uploadProgress,
+                actions = actions
+            )
+        } else {
+            ChatBubble(
+                message = messageText(item),
+                timestamp = formatClock(item.createdAt),
+                isSent = item.isOutgoing,
+                status = status,
+                isEdited = item.isEdited && !item.isDeleted,
+                isPlaceholder = item.isDeleted,
+                senderName = senderName,
+                senderColor = senderColor(item.senderId),
+                onClick = if (failed) ({ actions.onRetryMessage(item.clientMessageId) }) else null
+            )
+        }
         if (failed) {
             Text(
                 text = item.failureReason?.let { stringResource(R.string.chat_failed_with_reason, it) }
@@ -541,9 +599,19 @@ private fun messageText(item: ChatMessageItem): String {
         MessageType.SYSTEM -> return stringResource(R.string.chats_preview_system)
         MessageType.UNKNOWN -> stringResource(R.string.chats_preview_unsupported)
     }
-    // Media isn't rendered yet: show what it is, plus the caption.
+    // Media without attachment metadata (shouldn't happen): say what it is, plus the caption.
     return if (body != null) "[$label] $body" else "[$label]"
 }
+
+@Composable
+private fun mediaNoticeMessage(notice: MediaNotice): String = stringResource(
+    when (notice) {
+        MediaNotice.TooLarge -> R.string.media_too_large
+        MediaNotice.Unreadable -> R.string.media_unreadable
+        MediaNotice.NoAppToOpen -> R.string.media_no_app
+        MediaNotice.DownloadFailed -> R.string.media_download_failed
+    }
+)
 
 /** Stable per-user name colour, bright enough for the dark received bubble. */
 private fun senderColor(userId: String): Color =

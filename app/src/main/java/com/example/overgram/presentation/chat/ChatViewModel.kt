@@ -7,10 +7,12 @@ import com.example.overgram.domain.model.AuthOutcome
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.ConnectionState
+import com.example.overgram.domain.model.MediaSendResult
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.RealtimeEvent
 import com.example.overgram.domain.model.SendState
 import com.example.overgram.domain.model.StoredMessage
+import com.example.overgram.domain.usecase.CancelSendingUseCase
 import com.example.overgram.domain.usecase.CreateGroupUseCase
 import com.example.overgram.domain.usecase.GetChatUseCase
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
@@ -22,9 +24,11 @@ import com.example.overgram.domain.usecase.ObserveConnectionStateUseCase
 import com.example.overgram.domain.usecase.ObserveMessagesUseCase
 import com.example.overgram.domain.usecase.ObserveReadCursorsUseCase
 import com.example.overgram.domain.usecase.ObserveRealtimeEventsUseCase
+import com.example.overgram.domain.usecase.ObserveUploadProgressUseCase
 import com.example.overgram.domain.usecase.RefreshMessagesUseCase
 import com.example.overgram.domain.usecase.RenameGroupUseCase
 import com.example.overgram.domain.usecase.RetryMessageUseCase
+import com.example.overgram.domain.usecase.SendMediaMessageUseCase
 import com.example.overgram.domain.usecase.SendTextMessageUseCase
 import com.example.overgram.domain.usecase.SendTypingUseCase
 import com.example.overgram.domain.usecase.SetChatMutedUseCase
@@ -47,6 +51,8 @@ class ChatViewModel @AssistedInject constructor(
     private val refreshMessages: RefreshMessagesUseCase,
     private val loadOlderMessages: LoadOlderMessagesUseCase,
     private val sendTextMessage: SendTextMessageUseCase,
+    private val sendMediaMessage: SendMediaMessageUseCase,
+    private val cancelSendingMessage: CancelSendingUseCase,
     private val retryMessage: RetryMessageUseCase,
     private val markChatRead: MarkChatReadUseCase,
     private val getChat: GetChatUseCase,
@@ -59,6 +65,7 @@ class ChatViewModel @AssistedInject constructor(
     observeMessages: ObserveMessagesUseCase,
     observeEvents: ObserveRealtimeEventsUseCase,
     observeReadCursors: ObserveReadCursorsUseCase,
+    observeUploadProgress: ObserveUploadProgressUseCase,
     getCurrentUserId: GetCurrentUserIdUseCase
 ) : ViewModel() {
 
@@ -111,6 +118,9 @@ class ChatViewModel @AssistedInject constructor(
         refreshDetails()
         viewModelScope.launch { observeEvents().collect(::onEvent) }
         viewModelScope.launch {
+            observeUploadProgress().collect { progress -> _uiState.update { it.copy(uploadProgress = progress) } }
+        }
+        viewModelScope.launch {
             observeReadCursors(args.chatId).collect { cursors ->
                 val othersMax = cursors.filterKeys { it != myUserId }.values.maxOrNull() ?: 0L
                 if (othersMax > othersReadUpTo) {
@@ -144,6 +154,37 @@ class ChatViewModel @AssistedInject constructor(
         if (text.isEmpty()) return
         _uiState.update { it.copy(input = "") }
         viewModelScope.launch { sendTextMessage(args.chatId, text) }
+    }
+
+    /**
+     * Queues picked attachments, each as its own message (in the order picked). [caption] goes
+     * with the first one, like an album caption.
+     */
+    fun sendMedia(uris: List<String>, caption: String?, asFile: Boolean) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch {
+            uris.forEachIndexed { index, uri ->
+                val result = sendMediaMessage(args.chatId, uri, caption.takeIf { index == 0 }, asFile)
+                when (result) {
+                    is MediaSendResult.Queued -> Unit
+                    MediaSendResult.TooLarge -> showMediaNotice(MediaNotice.TooLarge)
+                    MediaSendResult.Unreadable -> showMediaNotice(MediaNotice.Unreadable)
+                }
+            }
+        }
+    }
+
+    /** The ✕ on an uploading attachment: the message is dropped before it ever goes out. */
+    fun cancelSending(clientMessageId: String) {
+        viewModelScope.launch { cancelSendingMessage(clientMessageId) }
+    }
+
+    fun showMediaNotice(notice: MediaNotice) {
+        _uiState.update { it.copy(mediaNotice = notice) }
+    }
+
+    fun onMediaNoticeShown() {
+        _uiState.update { it.copy(mediaNotice = null) }
     }
 
     /** Tap on a failed bubble: back in the queue with the same clientMessageId, so it can't duplicate. */
@@ -417,7 +458,8 @@ class ChatViewModel @AssistedInject constructor(
                 else -> OutgoingState.Sent
             },
             systemEvent = systemEvent,
-            failureReason = failureReason
+            failureReason = failureReason,
+            media = media.firstOrNull()
         )
     }
 

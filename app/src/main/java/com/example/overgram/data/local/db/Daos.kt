@@ -48,6 +48,14 @@ interface MessageDao {
     @Query("UPDATE messages SET sendState = :state, failureReason = :reason WHERE clientMessageId = :clientMessageId")
     suspend fun setSendState(clientMessageId: String, state: String, reason: String?)
 
+    /** Upload progress of a queued attachment: its session and (once known) the mediaId in [media]. */
+    @Query("UPDATE messages SET uploadId = :uploadId, media = :media WHERE clientMessageId = :clientMessageId")
+    suspend fun setUpload(clientMessageId: String, uploadId: String?, media: String?)
+
+    /** Only for our own unsent messages (cancelling an upload); history is never deleted locally. */
+    @Query("DELETE FROM messages WHERE clientMessageId = :clientMessageId AND sendState != 'SENT'")
+    suspend fun deleteUnsent(clientMessageId: String): Int
+
     @Query("UPDATE messages SET body = :body, isEdited = 1 WHERE serverId = :serverId")
     suspend fun applyEdit(serverId: Long, body: String)
 

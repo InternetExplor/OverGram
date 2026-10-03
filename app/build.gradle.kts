@@ -85,6 +85,12 @@ dependencies {
     // Coil (загрузка изображений/аватаров)
     implementation("io.coil-kt:coil-compose:2.6.0")
 
+    // Вложения: видеоплеер (стрим с Range-запросами через наш OkHttp) и EXIF-поворот фото
+    implementation("androidx.media3:media3-exoplayer:1.8.0")
+    implementation("androidx.media3:media3-ui:1.8.0")
+    implementation("androidx.media3:media3-datasource-okhttp:1.8.0")
+    implementation("androidx.exifinterface:exifinterface:1.4.1")
+
     // DataStore (настройки пользователя)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 

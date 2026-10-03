@@ -5,6 +5,7 @@ import com.example.overgram.core.network.AuthInterceptor
 import com.example.overgram.core.network.TokenAuthenticator
 import com.example.overgram.data.remote.api.AuthApi
 import com.example.overgram.data.remote.api.ChatApi
+import com.example.overgram.data.remote.api.MediaApi
 import com.example.overgram.data.remote.api.ProfileApi
 import com.example.overgram.data.remote.api.SyncApi
 import com.google.gson.Gson
@@ -74,4 +75,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideProfileApi(retrofit: Retrofit): ProfileApi = retrofit.create(ProfileApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMediaApi(retrofit: Retrofit): MediaApi = retrofit.create(MediaApi::class.java)
 }

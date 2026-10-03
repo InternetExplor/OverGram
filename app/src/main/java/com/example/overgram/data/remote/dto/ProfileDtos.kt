@@ -18,7 +18,8 @@ data class StartUploadRequestDto(
     /** Hex SHA-256 of the whole file; checked by the server after the last chunk. */
     @SerializedName("sha256") val sha256: String,
     @SerializedName("width") val width: Int?,
-    @SerializedName("height") val height: Int?
+    @SerializedName("height") val height: Int?,
+    @SerializedName("durationMs") val durationMs: Long? = null
 )
 
 data class StartUploadResultDto(

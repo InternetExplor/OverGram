@@ -1,9 +1,12 @@
 package com.example.overgram.data.mapper
 
 import com.example.overgram.data.remote.dto.MessageDto
+import com.example.overgram.data.remote.dto.MediaMetaDto
 import com.example.overgram.data.remote.dto.MessagePreviewDto
 import com.example.overgram.data.remote.dto.SystemBodyDto
 import com.example.overgram.data.remote.dto.UserPublicDto
+import com.example.overgram.domain.model.MediaAttachment
+import com.example.overgram.domain.model.MediaKind
 import com.example.overgram.domain.model.Message
 import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
@@ -32,6 +35,19 @@ fun MessagePreviewDto.toDomain(gson: Gson): MessagePreview? {
     )
 }
 
+fun MediaMetaDto.toDomain(): MediaAttachment? {
+    val id = mediaId ?: return null
+    return MediaAttachment(
+        mediaId = id,
+        kind = MediaKind.entries.firstOrNull { it.name == kind } ?: MediaKind.FILE,
+        mimeType = mimeType ?: "application/octet-stream",
+        sizeBytes = sizeBytes ?: 0L,
+        width = width,
+        height = height,
+        durationMs = durationMs
+    )
+}
+
 fun MessageDto.toDomain(gson: Gson): Message? {
     val messageType = MessageType.entries.firstOrNull { it.name == type } ?: MessageType.UNKNOWN
     return Message(
@@ -44,7 +60,8 @@ fun MessageDto.toDomain(gson: Gson): Message? {
         createdAt = createdAt ?: return null,
         isEdited = editedAt != null,
         isDeleted = deletedAt != null,
-        systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(gson, body) else null
+        systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(gson, body) else null,
+        media = media.orEmpty().mapNotNull { it.toDomain() }
     )
 }
 

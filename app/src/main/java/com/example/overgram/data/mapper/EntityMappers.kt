@@ -1,11 +1,14 @@
 package com.example.overgram.data.mapper
 
 import com.example.overgram.data.local.db.ChatEntity
+import com.example.overgram.data.local.db.MediaJson
 import com.example.overgram.data.local.db.MessageEntity
 import com.example.overgram.data.local.db.UserEntity
 import com.example.overgram.data.remote.dto.ChatDto
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
+import com.example.overgram.domain.model.MediaAttachment
+import com.example.overgram.domain.model.MediaKind
 import com.example.overgram.domain.model.Message
 import com.example.overgram.domain.model.MessagePreview
 import com.example.overgram.domain.model.MessageType
@@ -13,10 +16,13 @@ import com.example.overgram.domain.model.SendState
 import com.example.overgram.domain.model.StoredMessage
 import com.example.overgram.domain.model.UserProfile
 import com.google.gson.Gson
+import com.google.gson.JsonParseException
+import com.google.gson.reflect.TypeToken
+import timber.log.Timber
 
 /* Domain/DTO ↔ Room entity mappers. */
 
-fun Message.toEntity(chatId: String): MessageEntity = MessageEntity(
+fun Message.toEntity(chatId: String, gson: Gson): MessageEntity = MessageEntity(
     clientMessageId = clientMessageId,
     chatId = chatId,
     serverId = serverId,
@@ -27,7 +33,8 @@ fun Message.toEntity(chatId: String): MessageEntity = MessageEntity(
     createdAt = createdAt,
     isEdited = isEdited,
     isDeleted = isDeleted,
-    sendState = SendState.SENT.name
+    sendState = SendState.SENT.name,
+    media = media.toMediaJson(gson)
 )
 
 fun MessageEntity.toDomain(gson: Gson): StoredMessage {
@@ -45,7 +52,8 @@ fun MessageEntity.toDomain(gson: Gson): StoredMessage {
         isDeleted = isDeleted,
         systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(gson, body) else null,
         sendState = SendState.entries.firstOrNull { it.name == sendState } ?: SendState.SENT,
-        failureReason = failureReason
+        failureReason = failureReason,
+        media = parseMedia(gson, media)
     )
 }
 
@@ -114,3 +122,41 @@ fun UserEntity.toDomain(): UserProfile = UserProfile(
     isOnline = isOnline,
     lastSeenAt = lastSeenAt
 )
+
+fun List<MediaAttachment>.toMediaJson(gson: Gson): String? =
+    if (isEmpty()) null else gson.toJson(map { it.toJson() })
+
+fun MediaAttachment.toJson(): MediaJson = MediaJson(
+    mediaId = mediaId,
+    kind = kind.name,
+    mimeType = mimeType,
+    sizeBytes = sizeBytes,
+    width = width,
+    height = height,
+    durationMs = durationMs,
+    localPath = localPath
+)
+
+private val mediaListType = object : TypeToken<List<MediaJson>>() {}.type
+
+fun parseMedia(gson: Gson, json: String?): List<MediaAttachment> {
+    if (json.isNullOrEmpty()) return emptyList()
+    val rows: List<MediaJson> = try {
+        gson.fromJson(json, mediaListType)
+    } catch (e: JsonParseException) {
+        Timber.w(e, "Unparseable stored media")
+        null
+    } ?: return emptyList()
+    return rows.map { row ->
+        MediaAttachment(
+            mediaId = row.mediaId,
+            kind = MediaKind.entries.firstOrNull { it.name == row.kind } ?: MediaKind.FILE,
+            mimeType = row.mimeType,
+            sizeBytes = row.sizeBytes,
+            width = row.width,
+            height = row.height,
+            durationMs = row.durationMs,
+            localPath = row.localPath
+        )
+    }
+}

@@ -41,7 +41,8 @@ fun chatSubtitle(chat: ChatSummary, currentUserId: String?): String {
         MessageType.TEXT -> message.body.orEmpty()
         MessageType.IMAGE -> message.body.withPrefix(stringResource(R.string.chats_preview_photo))
         MessageType.VIDEO -> message.body.withPrefix(stringResource(R.string.chats_preview_video))
-        MessageType.FILE -> message.body.withPrefix(stringResource(R.string.chats_preview_file))
+        // A document's body is its name: "report.pdf" says more than "File".
+        MessageType.FILE -> message.body?.takeIf { it.isNotBlank() } ?: stringResource(R.string.chats_preview_file)
         // SYSTEM bodies are structured JSON, never display text.
         MessageType.SYSTEM -> return message.systemEvent?.let { event ->
             val sender = chat.lastMessageSender

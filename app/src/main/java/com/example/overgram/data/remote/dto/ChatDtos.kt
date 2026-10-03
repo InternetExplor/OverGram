@@ -46,13 +46,26 @@ data class MessageDto(
     @SerializedName("body") val body: String?,
     @SerializedName("createdAt") val createdAt: Long?,
     @SerializedName("editedAt") val editedAt: Long?,
-    @SerializedName("deletedAt") val deletedAt: Long?
+    @SerializedName("deletedAt") val deletedAt: Long?,
+    @SerializedName("media") val media: List<MediaMetaDto>?
+)
+
+data class MediaMetaDto(
+    @SerializedName("mediaId") val mediaId: String?,
+    /** IMAGE, VIDEO or FILE. */
+    @SerializedName("kind") val kind: String?,
+    @SerializedName("mimeType") val mimeType: String?,
+    @SerializedName("sizeBytes") val sizeBytes: Long?,
+    @SerializedName("width") val width: Int?,
+    @SerializedName("height") val height: Int?,
+    @SerializedName("durationMs") val durationMs: Long?
 )
 
 data class SendMessageRequestDto(
     @SerializedName("clientMessageId") val clientMessageId: String,
     @SerializedName("type") val type: String,
-    @SerializedName("body") val body: String?
+    @SerializedName("body") val body: String?,
+    @SerializedName("mediaIds") val mediaIds: List<String> = emptyList()
 )
 
 data class SendMessageResultDto(

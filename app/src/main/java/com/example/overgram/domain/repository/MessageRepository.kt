@@ -1,8 +1,10 @@
 package com.example.overgram.domain.repository
 
 import com.example.overgram.domain.model.AuthOutcome
+import com.example.overgram.domain.model.MediaSendResult
 import com.example.overgram.domain.model.StoredMessage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Message history, stored on the device. Screens observe the local copy; the network
@@ -24,6 +26,19 @@ interface MessageRepository {
 
     /** Queues a TEXT message and starts sending it. Returns its clientMessageId. */
     suspend fun sendText(chatId: String, text: String): String
+
+    /**
+     * Copies the picked item ([uri], a content Uri) into the outbox and queues it as a photo/video
+     * message ([asFile] false) or a document ([asFile] true). [caption] is ignored for documents,
+     * whose body is the file name.
+     */
+    suspend fun sendMedia(chatId: String, uri: String, caption: String?, asFile: Boolean): MediaSendResult
+
+    /** Upload progress (0..1) of queued attachments, by clientMessageId. */
+    val uploadProgress: StateFlow<Map<String, Float>>
+
+    /** Drops a message that isn't sent yet (e.g. stops an upload). No-op for sent messages. */
+    suspend fun cancelSending(clientMessageId: String)
 
     /** Puts a FAILED message back in the queue. */
     suspend fun retry(clientMessageId: String)

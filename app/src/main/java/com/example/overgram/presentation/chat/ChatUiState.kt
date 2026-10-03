@@ -3,6 +3,7 @@ package com.example.overgram.presentation.chat
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.ConnectionState
+import com.example.overgram.domain.model.MediaAttachment
 import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SystemEvent
 import com.example.overgram.domain.model.SystemEventKind
@@ -39,8 +40,13 @@ data class ChatMessageItem(
     /** Why the server refused an outgoing message ([OutgoingState.Failed]). */
     val failureReason: String? = null,
     /** Parsed SYSTEM message, rendered as a centered note instead of a bubble. */
-    val systemEvent: SystemEvent? = null
+    val systemEvent: SystemEvent? = null,
+    /** IMAGE / VIDEO / FILE messages. */
+    val media: MediaAttachment? = null
 )
+
+/** One-off problems with attachments, for a snackbar. */
+enum class MediaNotice { TooLarge, Unreadable, NoAppToOpen, DownloadFailed }
 
 data class ChatUiState(
     val type: ChatType,
@@ -65,6 +71,9 @@ data class ChatUiState(
     val loadError: AuthError? = null,
     /** Transient error for a snackbar. */
     val error: AuthError? = null,
+    val mediaNotice: MediaNotice? = null,
+    /** Our attachments being uploaded: progress 0..1 by clientMessageId. */
+    val uploadProgress: Map<String, Float> = emptyMap(),
     val isSessionEnded: Boolean = false,
     val renameDialog: RenameDialogState? = null,
     val isLeaving: Boolean = false,

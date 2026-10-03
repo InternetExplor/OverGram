@@ -6,6 +6,7 @@ import com.example.overgram.data.mapper.toEntity
 import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.RealtimeEvent
 import com.example.overgram.domain.repository.MessageRepository
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,7 +26,8 @@ class RealtimeSync @Inject constructor(
     private val realtime: RealtimeClient,
     private val messageDao: MessageDao,
     private val userDao: UserDao,
-    private val messageRepository: MessageRepository
+    private val messageRepository: MessageRepository,
+    private val gson: Gson
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -55,7 +57,7 @@ class RealtimeSync @Inject constructor(
     private suspend fun apply(event: RealtimeEvent) {
         when (event) {
             // Also the echo of our own message: same clientMessageId, so it replaces the queued row.
-            is RealtimeEvent.MessageNew -> messageDao.upsert(event.message.toEntity(event.chatId))
+            is RealtimeEvent.MessageNew -> messageDao.upsert(event.message.toEntity(event.chatId, gson))
             is RealtimeEvent.MessageEdited -> messageDao.applyEdit(event.serverId, event.body)
             is RealtimeEvent.MessageDeleted -> messageDao.applyDelete(event.serverId)
             is RealtimeEvent.Presence -> userDao.updatePresence(event.userId, event.isOnline, event.lastSeenAt)

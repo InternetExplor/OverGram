@@ -29,7 +29,24 @@ data class MessageEntity(
     /** SendState name. */
     val sendState: String,
     /** Why the server refused it, for FAILED messages. */
-    val failureReason: String? = null
+    val failureReason: String? = null,
+    /** JSON list of [MediaJson]; null for messages without attachments. */
+    val media: String? = null,
+    /** Our own attachment's upload session, so an interrupted upload resumes instead of restarting. */
+    val uploadId: String? = null
+)
+
+/** One attachment as stored in [MessageEntity.media]. */
+data class MediaJson(
+    val mediaId: String?,
+    val kind: String,
+    val mimeType: String,
+    val sizeBytes: Long,
+    val width: Int? = null,
+    val height: Int? = null,
+    val durationMs: Long? = null,
+    /** Our copy of a file being sent; dropped once the upload is done. */
+    val localPath: String? = null
 )
 
 /** One row of the chat list, as last returned by the server. */

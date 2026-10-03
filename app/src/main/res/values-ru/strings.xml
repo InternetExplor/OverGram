@@ -241,4 +241,25 @@
     <string name="message_status_sent">Отправлено</string>
     <string name="message_status_read">Прочитано</string>
     <string name="message_status_failed">Не отправлено</string>
+
+    <!-- Вложения -->
+    <string name="attach_gallery">Галерея</string>
+    <string name="attach_file">Файл</string>
+    <string name="media_caption_placeholder">Добавить подпись…</string>
+    <string name="media_send">Отправить</string>
+    <plurals name="media_send_title">
+        <item quantity="one">Отправить %d вложение</item>
+        <item quantity="few">Отправить %d вложения</item>
+        <item quantity="many">Отправить %d вложений</item>
+        <item quantity="other">Отправить %d вложения</item>
+    </plurals>
+    <string name="media_too_large">Файлы больше 100 МБ отправить нельзя</string>
+    <string name="media_unreadable">Не удалось прочитать файл</string>
+    <string name="media_no_app">На устройстве нет приложения, которое может открыть этот файл</string>
+    <string name="media_download_failed">Не удалось скачать файл</string>
+    <string name="media_play">Воспроизвести видео</string>
+    <string name="media_cancel">Отменить</string>
+    <string name="media_download">Скачать</string>
+    <string name="media_progress">%1$s из %2$s</string>
+    <string name="media_viewer_back">Назад</string>
 </resources>

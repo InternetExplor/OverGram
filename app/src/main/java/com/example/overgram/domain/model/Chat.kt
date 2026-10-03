@@ -6,6 +6,26 @@ enum class MessageType { TEXT, IMAGE, VIDEO, FILE, SYSTEM, UNKNOWN }
 
 enum class MemberRole { OWNER, ADMIN, MEMBER }
 
+enum class MediaKind { IMAGE, VIDEO, FILE }
+
+/**
+ * A photo, video or file attached to a message. Relay keeps no file names, so for FILE messages
+ * the message body carries the name (see [StoredMessage.body]).
+ *
+ * @param mediaId Null until our own upload has started.
+ * @param localPath Our own copy of a file we're sending, until the upload is done.
+ */
+data class MediaAttachment(
+    val mediaId: String?,
+    val kind: MediaKind,
+    val mimeType: String,
+    val sizeBytes: Long,
+    val width: Int? = null,
+    val height: Int? = null,
+    val durationMs: Long? = null,
+    val localPath: String? = null
+)
+
 /**
  * Parsed body of a SYSTEM message: structured data, rendered into text by the client.
  * [kind] is [SystemEventKind.UNKNOWN] for events this client doesn't know yet.
@@ -47,7 +67,8 @@ data class Message(
     val isEdited: Boolean,
     val isDeleted: Boolean,
     /** Set for SYSTEM messages whose body could be parsed. */
-    val systemEvent: SystemEvent? = null
+    val systemEvent: SystemEvent? = null,
+    val media: List<MediaAttachment> = emptyList()
 )
 
 /** Delivery state of a message stored on this device. */
@@ -71,12 +92,14 @@ data class StoredMessage(
     val serverSeq: Long?,
     val senderId: String,
     val type: MessageType,
+    /** Text, a media caption, or — for FILE messages — the file name. */
     val body: String?,
     val createdAt: Long,
     val isEdited: Boolean,
     val isDeleted: Boolean,
     val systemEvent: SystemEvent?,
     val sendState: SendState,
+    val media: List<MediaAttachment> = emptyList(),
     /** Server's reason for a [SendState.FAILED] message. */
     val failureReason: String? = null
 )
@@ -140,3 +163,11 @@ data class ChatSummary(
     val unreadCount: Int,
     val isMuted: Boolean
 )
+
+/** Outcome of picking an attachment to send. */
+sealed interface MediaSendResult {
+    data class Queued(val clientMessageId: String) : MediaSendResult
+    /** Over the server's 100 MB limit. */
+    data object TooLarge : MediaSendResult
+    data object Unreadable : MediaSendResult
+}
