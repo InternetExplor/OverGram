@@ -72,9 +72,12 @@ import com.example.overgram.presentation.common.previewModel
 import com.example.overgram.presentation.common.rememberMediaEntryPoint
 import com.example.overgram.ui.components.BubbleStatus
 import com.example.overgram.ui.components.FileBubble
+import com.example.overgram.ui.components.QuoteContent
 import com.example.overgram.ui.components.TransferState
 import com.example.overgram.ui.components.VisualMediaBubble
 import com.example.overgram.ui.theme.Accent
+import com.example.overgram.ui.theme.AttachFile
+import com.example.overgram.ui.theme.AttachGallery
 import com.example.overgram.ui.theme.SendBlue
 import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.SurfaceElevatedDark
@@ -91,7 +94,10 @@ internal fun MediaMessageBubble(
     senderColor: Color,
     status: BubbleStatus,
     uploadProgress: Float?,
-    actions: ChatActions
+    actions: ChatActions,
+    reply: QuoteContent? = null,
+    onReplyClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val store = rememberMediaEntryPoint()?.localMediaStore()
@@ -144,6 +150,9 @@ internal fun MediaMessageBubble(
             senderColor = senderColor,
             transfer = transfer,
             onCancel = onCancel,
+            reply = reply,
+            onReplyClick = onReplyClick,
+            onLongClick = onLongClick,
             onClick = {
                 when {
                     failed -> actions.onRetryMessage(item.clientMessageId)
@@ -179,6 +188,9 @@ internal fun MediaMessageBubble(
                 failed -> TransferState.Failed
                 else -> TransferState.Idle
             },
+            reply = reply,
+            onReplyClick = onReplyClick,
+            onLongClick = onLongClick,
             onCancel = onCancel,
             onClick = {
                 when {
@@ -232,11 +244,11 @@ internal fun AttachFlow(
                     .padding(bottom = 28.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                AttachOption(Icons.Default.Image, stringResource(R.string.attach_gallery), GalleryColor) {
+                AttachOption(Icons.Default.Image, stringResource(R.string.attach_gallery), AttachGallery) {
                     onDismissMenu()
                     galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
                 }
-                AttachOption(Icons.AutoMirrored.Filled.InsertDriveFile, stringResource(R.string.attach_file), FileColor) {
+                AttachOption(Icons.AutoMirrored.Filled.InsertDriveFile, stringResource(R.string.attach_file), AttachFile) {
                     onDismissMenu()
                     filePicker.launch(arrayOf("*/*"))
                 }
@@ -400,9 +412,5 @@ private fun nameAndSize(context: Context, uri: String): Pair<String, Long?> {
         null
     } ?: (parsed.lastPathSegment.orEmpty() to null)
 }
-
-/** Telegram's attach-menu colors. */
-private val GalleryColor = Color(0xFF4C9CF8)
-private val FileColor = Color(0xFF3FB8E8)
 
 private const val MAX_PICKED = 10

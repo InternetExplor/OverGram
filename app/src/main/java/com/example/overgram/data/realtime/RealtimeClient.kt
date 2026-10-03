@@ -108,9 +108,6 @@ class RealtimeClient @Inject constructor(
     private val _events = MutableSharedFlow<RealtimeEvent>(extraBufferCapacity = EVENT_BUFFER)
     override val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
 
-    /** chatId → userId → highest read seq seen. */
-    private val readCursorsByChat = MutableStateFlow<Map<String, Map<String, Long>>>(emptyMap())
-
     /** Read from any thread by senders; written by the command loop. */
     @Volatile
     private var socket: WebSocket? = null
@@ -170,9 +167,6 @@ class RealtimeClient @Inject constructor(
         commands.trySend(Command.Stop)
     }
 
-    override fun readCursors(chatId: String): Flow<Map<String, Long>> =
-        readCursorsByChat.map { it[chatId].orEmpty() }.distinctUntilChanged()
-
     override fun sendTyping(chatId: String) {
         if (socketState.value == ConnectionState.Connected) {
             socket?.send(gson.toJson(TypingFrame(chatId)))
@@ -189,14 +183,15 @@ class RealtimeClient @Inject constructor(
         clientMessageId: String,
         type: MessageType,
         body: String?,
-        mediaIds: List<String> = emptyList()
+        mediaIds: List<String> = emptyList(),
+        replyTo: String? = null
     ): SendResult? {
         if (socketState.value != ConnectionState.Connected) return null
         val ws = socket ?: return null
         val deferred = CompletableDeferred<SendResult?>()
         pendingAcks[clientMessageId] = deferred
         return try {
-            val frame = SendFrame(clientMessageId, chatId, type.name, body, mediaIds)
+            val frame = SendFrame(clientMessageId, chatId, type.name, body, mediaIds, replyTo)
             if (!ws.send(gson.toJson(frame))) return null
             withTimeoutOrNull(ACK_TIMEOUT_MS) { deferred.await() }
         } finally {
@@ -208,6 +203,11 @@ class RealtimeClient @Inject constructor(
     fun sendRead(chatId: String, upToSeq: Long): Boolean =
         socketState.value == ConnectionState.Connected &&
             socket?.send(gson.toJson(CursorFrame("read", chatId, upToSeq))) == true
+
+    /** Delivery receipt over the socket ("this device has everything up to [upToSeq]"); false if not connected. */
+    fun sendReceived(chatId: String, upToSeq: Long): Boolean =
+        socketState.value == ConnectionState.Connected &&
+            socket?.send(gson.toJson(CursorFrame("received", chatId, upToSeq))) == true
 
     // ---- command loop ----
 
@@ -518,10 +518,6 @@ class RealtimeClient @Inject constructor(
                     val chatId = it.chatId ?: return
                     val userId = it.userId ?: return
                     val upToSeq = it.upToSeq ?: return
-                    readCursorsByChat.update { all ->
-                        val chat = all[chatId].orEmpty()
-                        all + (chatId to (chat + (userId to maxOf(chat[userId] ?: 0L, upToSeq))))
-                    }
                     RealtimeEvent.ReadReceipt(chatId, userId, upToSeq)
                 }
                 "delivered" -> gson.fromJson(payload, CursorPayloadDto::class.java).let {

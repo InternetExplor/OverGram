@@ -34,7 +34,8 @@ fun Message.toEntity(chatId: String, gson: Gson): MessageEntity = MessageEntity(
     isEdited = isEdited,
     isDeleted = isDeleted,
     sendState = SendState.SENT.name,
-    media = media.toMediaJson(gson)
+    media = media.toMediaJson(gson),
+    replyTo = replyToId
 )
 
 fun MessageEntity.toDomain(gson: Gson): StoredMessage {
@@ -53,7 +54,8 @@ fun MessageEntity.toDomain(gson: Gson): StoredMessage {
         systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(gson, body) else null,
         sendState = SendState.entries.firstOrNull { it.name == sendState } ?: SendState.SENT,
         failureReason = failureReason,
-        media = parseMedia(gson, media)
+        media = parseMedia(gson, media),
+        replyToId = replyTo
     )
 }
 

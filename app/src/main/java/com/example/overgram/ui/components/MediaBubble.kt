@@ -46,6 +46,9 @@ import com.example.overgram.ui.theme.Accent
 import com.example.overgram.ui.theme.AccentBright
 import com.example.overgram.ui.theme.ChatWallpaper
 import com.example.overgram.ui.theme.IncomingMeta
+import com.example.overgram.ui.theme.MediaOverlay
+import com.example.overgram.ui.theme.MediaPlaceholder
+import com.example.overgram.ui.theme.OutgoingFileIcon
 import com.example.overgram.ui.theme.OutgoingMeta
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.ReceivedBubbleColor
@@ -70,7 +73,6 @@ private val MaxMediaHeight = 320.dp
 private val MinMediaWidth = 140.dp
 private val MinMediaHeight = 110.dp
 private val MediaCorner = 13.dp
-private val OverlayDark = Color(0x8C000000)
 
 /**
  * A photo or video message, Telegram style: the picture fills the bubble; with no caption the
@@ -81,6 +83,8 @@ private val OverlayDark = Color(0x8C000000)
  * @param durationText Videos: shown in the top-left corner.
  * @param transfer [TransferState.Running] while uploading: a progress ring that cancels on tap.
  * @param onCancel Cancels the upload.
+ * @param reply The message this one answers, quoted above the picture.
+ * @param onLongClick Opens the message menu.
  */
 @Composable
 fun VisualMediaBubble(
@@ -97,6 +101,9 @@ fun VisualMediaBubble(
     isEdited: Boolean = false,
     senderName: String? = null,
     senderColor: Color = AccentBright,
+    reply: QuoteContent? = null,
+    onReplyClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     transfer: TransferState = TransferState.Idle,
     onClick: () -> Unit = {},
     onCancel: (() -> Unit)? = null
@@ -106,21 +113,24 @@ fun VisualMediaBubble(
     BubbleContainer(isSent = isSent, modifier = modifier) {
         Column(Modifier.width(boxWidth)) {
             if (senderName != null) SenderName(senderName, senderColor, Modifier.padding(start = 7.dp, end = 7.dp, top = 3.dp, bottom = 3.dp))
+            if (reply != null) {
+                MessageQuote(reply, onClick = onReplyClick, modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 3.dp, bottom = 4.dp))
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(boxHeight)
                     .clip(RoundedCornerShape(MediaCorner))
-                    .background(Color(0xFF17212B))
-                    .clickable(onClick = onClick)
+                    .background(MediaPlaceholder)
+                    .bubbleClicks(onClick, onLongClick)
             ) {
                 SubcomposeAsyncImage(
                     model = model,
                     contentDescription = stringResource(if (isVideo) R.string.chats_preview_video else R.string.chats_preview_photo),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
-                    loading = { Box(Modifier.fillMaxSize().background(Color(0xFF17212B))) },
-                    error = { Box(Modifier.fillMaxSize().background(Color(0xFF17212B))) }
+                    loading = { Box(Modifier.fillMaxSize().background(MediaPlaceholder)) },
+                    error = { Box(Modifier.fillMaxSize().background(MediaPlaceholder)) }
                 )
                 if (durationText != null) {
                     OverlayPill(durationText, Modifier.align(Alignment.TopStart).padding(6.dp))
@@ -150,7 +160,7 @@ fun VisualMediaBubble(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(6.dp)
-                            .background(OverlayDark, RoundedCornerShape(50))
+                            .background(MediaOverlay, RoundedCornerShape(50))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         BubbleMeta(
@@ -194,6 +204,8 @@ fun VisualMediaBubble(
  * @param sizeText "1.2 MB", or "0.4 / 1.2 MB" while transferring.
  * @param onClick Downloads, or opens once it's on the device.
  * @param onCancel Cancels our upload.
+ * @param reply The message this one answers, quoted above the file.
+ * @param onLongClick Opens the message menu.
  */
 @Composable
 fun FileBubble(
@@ -206,17 +218,21 @@ fun FileBubble(
     isEdited: Boolean = false,
     senderName: String? = null,
     senderColor: Color = AccentBright,
+    reply: QuoteContent? = null,
+    onReplyClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     transfer: TransferState = TransferState.Idle,
     onClick: () -> Unit = {},
     onCancel: (() -> Unit)? = null
 ) {
     val metaColor = if (isSent) OutgoingMeta else IncomingMeta
-    val circleColor = if (isSent) Color(0xFF5B8DC4) else Accent
+    val circleColor = if (isSent) OutgoingFileIcon else Accent
     BubbleContainer(isSent = isSent, modifier = modifier) {
         Column(Modifier.widthIn(max = 280.dp).padding(start = 7.dp, end = 5.dp, top = 5.dp, bottom = 3.dp)) {
             if (senderName != null) SenderName(senderName, senderColor, Modifier.padding(bottom = 4.dp))
+            if (reply != null) MessageQuote(reply, onClick = onReplyClick, modifier = Modifier.padding(bottom = 6.dp))
             Box {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(onClick = onClick)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.bubbleClicks(onClick, onLongClick)) {
                     Box(
                         modifier = Modifier
                             .size(46.dp)
@@ -346,7 +362,7 @@ private fun RoundOverlayIcon(modifier: Modifier = Modifier, content: @Composable
         modifier = modifier
             .size(48.dp)
             .clip(CircleShape)
-            .background(OverlayDark),
+            .background(MediaOverlay),
         contentAlignment = Alignment.Center
     ) { content() }
 }
@@ -359,7 +375,7 @@ private fun OverlayPill(text: String, modifier: Modifier = Modifier) {
         fontSize = MetaSize,
         color = Color.White,
         modifier = modifier
-            .background(OverlayDark, RoundedCornerShape(50))
+            .background(MediaOverlay, RoundedCornerShape(50))
             .padding(horizontal = 6.dp, vertical = 2.dp)
     )
 }

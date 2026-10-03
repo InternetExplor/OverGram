@@ -47,7 +47,8 @@ data class MessageDto(
     @SerializedName("createdAt") val createdAt: Long?,
     @SerializedName("editedAt") val editedAt: Long?,
     @SerializedName("deletedAt") val deletedAt: Long?,
-    @SerializedName("media") val media: List<MediaMetaDto>?
+    @SerializedName("media") val media: List<MediaMetaDto>?,
+    @SerializedName("replyToClientMessageId") val replyToClientMessageId: String?
 )
 
 data class MediaMetaDto(
@@ -65,7 +66,14 @@ data class SendMessageRequestDto(
     @SerializedName("clientMessageId") val clientMessageId: String,
     @SerializedName("type") val type: String,
     @SerializedName("body") val body: String?,
-    @SerializedName("mediaIds") val mediaIds: List<String> = emptyList()
+    @SerializedName("mediaIds") val mediaIds: List<String> = emptyList(),
+    /** clientMessageId of the message this one replies to (same chat). */
+    @SerializedName("replyTo") val replyTo: String? = null
+)
+
+/** Body of `PATCH /v1/messages/{serverId}`. */
+data class EditMessageRequestDto(
+    @SerializedName("body") val body: String
 )
 
 data class SendMessageResultDto(

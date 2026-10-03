@@ -247,4 +247,16 @@
     <string name="media_download">Download</string>
     <string name="media_progress">%1$s / %2$s</string>
     <string name="media_viewer_back">Back</string>
+
+    <!-- Message actions -->
+    <string name="message_status_delivered">Delivered</string>
+    <string name="message_action_reply">Reply</string>
+    <string name="message_action_copy">Copy</string>
+    <string name="message_action_edit">Edit</string>
+    <string name="message_action_delete">Delete</string>
+    <string name="message_copied">Copied to clipboard</string>
+    <string name="message_editing">Editing</string>
+    <string name="message_reply_unavailable">Message</string>
+    <string name="message_delete_title">Delete message?</string>
+    <string name="message_delete_text">It will be deleted for everyone in this chat.</string>
 </resources>

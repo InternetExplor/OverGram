@@ -68,7 +68,9 @@ data class Message(
     val isDeleted: Boolean,
     /** Set for SYSTEM messages whose body could be parsed. */
     val systemEvent: SystemEvent? = null,
-    val media: List<MediaAttachment> = emptyList()
+    val media: List<MediaAttachment> = emptyList(),
+    /** clientMessageId of the message this one replies to. */
+    val replyToId: String? = null
 )
 
 /** Delivery state of a message stored on this device. */
@@ -101,7 +103,9 @@ data class StoredMessage(
     val sendState: SendState,
     val media: List<MediaAttachment> = emptyList(),
     /** Server's reason for a [SendState.FAILED] message. */
-    val failureReason: String? = null
+    val failureReason: String? = null,
+    /** clientMessageId of the message this one replies to. */
+    val replyToId: String? = null
 )
 
 /** One page of history, newest first. */
@@ -171,3 +175,9 @@ sealed interface MediaSendResult {
     data object TooLarge : MediaSendResult
     data object Unreadable : MediaSendResult
 }
+
+/**
+ * How far the other members of a chat got with our messages: [deliveredUpTo] (some device has
+ * them) and [readUpTo] (someone read them). serverSeq values; reading implies delivery.
+ */
+data class ChatReceipts(val deliveredUpTo: Long = 0L, val readUpTo: Long = 0L)

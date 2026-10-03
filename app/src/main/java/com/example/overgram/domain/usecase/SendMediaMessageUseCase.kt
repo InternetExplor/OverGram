@@ -8,6 +8,12 @@ import javax.inject.Inject
 class SendMediaMessageUseCase @Inject constructor(
     private val repository: MessageRepository
 ) {
-    suspend operator fun invoke(chatId: String, uri: String, caption: String?, asFile: Boolean): MediaSendResult =
-        repository.sendMedia(chatId, uri, caption?.trim()?.takeIf { it.isNotEmpty() }, asFile)
+    suspend operator fun invoke(
+        chatId: String,
+        uri: String,
+        caption: String?,
+        asFile: Boolean,
+        replyTo: String? = null
+    ): MediaSendResult =
+        repository.sendMedia(chatId, uri, caption?.trim()?.takeIf { it.isNotEmpty() }, asFile, replyTo)
 }

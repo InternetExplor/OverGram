@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
+import com.example.overgram.domain.model.ChatReceipts
 import com.example.overgram.domain.model.ChatSummary
 import com.example.overgram.domain.model.ChatType
 import com.example.overgram.domain.model.ConnectionState
@@ -14,6 +15,8 @@ import com.example.overgram.domain.model.SendState
 import com.example.overgram.domain.model.StoredMessage
 import com.example.overgram.domain.usecase.CancelSendingUseCase
 import com.example.overgram.domain.usecase.CreateGroupUseCase
+import com.example.overgram.domain.usecase.DeleteMessageUseCase
+import com.example.overgram.domain.usecase.EditMessageUseCase
 import com.example.overgram.domain.usecase.GetChatUseCase
 import com.example.overgram.domain.usecase.GetCurrentUserIdUseCase
 import com.example.overgram.domain.usecase.GetUsersUseCase
@@ -22,7 +25,7 @@ import com.example.overgram.domain.usecase.LoadOlderMessagesUseCase
 import com.example.overgram.domain.usecase.MarkChatReadUseCase
 import com.example.overgram.domain.usecase.ObserveConnectionStateUseCase
 import com.example.overgram.domain.usecase.ObserveMessagesUseCase
-import com.example.overgram.domain.usecase.ObserveReadCursorsUseCase
+import com.example.overgram.domain.usecase.ObserveReceiptsUseCase
 import com.example.overgram.domain.usecase.ObserveRealtimeEventsUseCase
 import com.example.overgram.domain.usecase.ObserveUploadProgressUseCase
 import com.example.overgram.domain.usecase.RefreshMessagesUseCase
@@ -52,6 +55,8 @@ class ChatViewModel @AssistedInject constructor(
     private val loadOlderMessages: LoadOlderMessagesUseCase,
     private val sendTextMessage: SendTextMessageUseCase,
     private val sendMediaMessage: SendMediaMessageUseCase,
+    private val editMessage: EditMessageUseCase,
+    private val deleteMessage: DeleteMessageUseCase,
     private val cancelSendingMessage: CancelSendingUseCase,
     private val retryMessage: RetryMessageUseCase,
     private val markChatRead: MarkChatReadUseCase,
@@ -64,7 +69,7 @@ class ChatViewModel @AssistedInject constructor(
     private val observeConnectionState: ObserveConnectionStateUseCase,
     observeMessages: ObserveMessagesUseCase,
     observeEvents: ObserveRealtimeEventsUseCase,
-    observeReadCursors: ObserveReadCursorsUseCase,
+    observeReceipts: ObserveReceiptsUseCase,
     observeUploadProgress: ObserveUploadProgressUseCase,
     getCurrentUserId: GetCurrentUserIdUseCase
 ) : ViewModel() {
@@ -93,8 +98,8 @@ class ChatViewModel @AssistedInject constructor(
     /** The screen is started: only then do incoming messages count as read. */
     private var isVisible = false
 
-    /** Highest seq any other member has read; own messages up to it get the double tick. */
-    private var othersReadUpTo = 0L
+    /** How far other members got: our messages up to these seqs show delivered / read ticks. */
+    private var receipts = ChatReceipts()
 
     /** userId → job that clears their "typing…". */
     private val typingTimeouts = HashMap<String, Job>()
@@ -121,12 +126,9 @@ class ChatViewModel @AssistedInject constructor(
             observeUploadProgress().collect { progress -> _uiState.update { it.copy(uploadProgress = progress) } }
         }
         viewModelScope.launch {
-            observeReadCursors(args.chatId).collect { cursors ->
-                val othersMax = cursors.filterKeys { it != myUserId }.values.maxOrNull() ?: 0L
-                if (othersMax > othersReadUpTo) {
-                    othersReadUpTo = othersMax
-                    publish()
-                }
+            observeReceipts(args.chatId).collect { latest ->
+                receipts = latest
+                publish()
             }
         }
         viewModelScope.launch {
@@ -148,12 +150,72 @@ class ChatViewModel @AssistedInject constructor(
         if (text.isNotBlank()) sendTyping(args.chatId)
     }
 
-    /** Queues the message: it shows right away and goes out now or once back online. */
+    /**
+     * Queues the message (as a reply if one is being answered): it shows right away and goes out
+     * now or once back online. While editing, saves the edit instead.
+     */
     fun send() {
-        val text = _uiState.value.input.trim()
+        val state = _uiState.value
+        val text = state.input.trim()
         if (text.isEmpty()) return
-        _uiState.update { it.copy(input = "") }
-        viewModelScope.launch { sendTextMessage(args.chatId, text) }
+        val editing = state.editing
+        if (editing != null) {
+            saveEdit(editing, text)
+            return
+        }
+        val replyTo = state.replyingTo?.clientMessageId
+        _uiState.update { it.copy(input = "", replyingTo = null) }
+        viewModelScope.launch { sendTextMessage(args.chatId, text, replyTo) }
+    }
+
+    /** "Reply": the next message (text or attachment) answers [item]. */
+    fun startReply(item: ChatMessageItem) {
+        if (!item.canReply) return
+        _uiState.update { state ->
+            // Leaving an edit drops its text; a draft being typed stays.
+            state.copy(replyingTo = item, editing = null, input = if (state.editing != null) "" else state.input)
+        }
+    }
+
+    /** "Edit": puts the message's text in the input; Send saves it. */
+    fun startEdit(item: ChatMessageItem) {
+        if (!item.canEdit) return
+        _uiState.update { it.copy(editing = item, replyingTo = null, input = item.body.orEmpty()) }
+    }
+
+    /** ✕ on the reply/edit strip. */
+    fun cancelComposeMode() {
+        _uiState.update { state ->
+            state.copy(replyingTo = null, editing = null, input = if (state.editing != null) "" else state.input)
+        }
+    }
+
+    private fun saveEdit(item: ChatMessageItem, text: String) {
+        _uiState.update { it.copy(input = "", editing = null) }
+        if (text == item.body?.trim()) return // nothing changed
+        viewModelScope.launch {
+            val outcome = editMessage(item.clientMessageId, text)
+            if (outcome is AuthOutcome.Failure) {
+                // Give the text back so it isn't lost.
+                _uiState.update { it.copy(editing = item, input = text) }
+                onError(outcome.error)
+            }
+        }
+    }
+
+    /** Deletes for everyone (our unsent message: just drops it). */
+    fun delete(item: ChatMessageItem) {
+        if (!item.canDelete) return
+        _uiState.update { state ->
+            state.copy(
+                editing = state.editing?.takeIf { it.clientMessageId != item.clientMessageId },
+                replyingTo = state.replyingTo?.takeIf { it.clientMessageId != item.clientMessageId }
+            )
+        }
+        viewModelScope.launch {
+            val outcome = deleteMessage(item.clientMessageId)
+            if (outcome is AuthOutcome.Failure) onError(outcome.error)
+        }
     }
 
     /**
@@ -162,9 +224,13 @@ class ChatViewModel @AssistedInject constructor(
      */
     fun sendMedia(uris: List<String>, caption: String?, asFile: Boolean) {
         if (uris.isEmpty()) return
+        val replyTo = _uiState.value.replyingTo?.clientMessageId
+        _uiState.update { it.copy(replyingTo = null) }
         viewModelScope.launch {
             uris.forEachIndexed { index, uri ->
-                val result = sendMediaMessage(args.chatId, uri, caption.takeIf { index == 0 }, asFile)
+                // Caption and reply go with the first item, like an album's.
+                val first = index == 0
+                val result = sendMediaMessage(args.chatId, uri, caption.takeIf { first }, asFile, replyTo.takeIf { first })
                 when (result) {
                     is MediaSendResult.Queued -> Unit
                     MediaSendResult.TooLarge -> showMediaNotice(MediaNotice.TooLarge)
@@ -335,7 +401,7 @@ class ChatViewModel @AssistedInject constructor(
             }
             RealtimeEvent.Resynced -> refreshNewest(initial = true)
             RealtimeEvent.SessionEnded -> onError(AuthError.SessionExpired)
-            // Edits/deletes are stored by RealtimeSync; read cursors come via observeReadCursors.
+            // Edits, deletes and receipts are stored by RealtimeSync and arrive through the database.
             is RealtimeEvent.MessageEdited,
             is RealtimeEvent.MessageDeleted,
             is RealtimeEvent.ReadReceipt,
@@ -413,7 +479,10 @@ class ChatViewModel @AssistedInject constructor(
         val oldestSeq = stored.mapNotNull { it.serverSeq }.minOrNull()
         _uiState.update {
             it.copy(
-                messages = stored.map { message -> message.toItem() },
+                messages = stored.let { all ->
+                    val byId = all.associateBy { it.clientMessageId }
+                    all.map { message -> message.toItem(byId) }
+                },
                 // seq starts at 1 per chat, so anything above it means older history exists.
                 hasOlder = !olderExhausted && oldestSeq != null && oldestSeq > 1
             )
@@ -437,7 +506,8 @@ class ChatViewModel @AssistedInject constructor(
         }
     }
 
-    private fun StoredMessage.toItem(): ChatMessageItem {
+    /** [byId]: the loaded messages, to show what a reply quotes (null: don't resolve replies). */
+    private fun StoredMessage.toItem(byId: Map<String, StoredMessage>? = null): ChatMessageItem {
         val isOwn = senderId == myUserId
         val seq = serverSeq
         return ChatMessageItem(
@@ -454,12 +524,14 @@ class ChatViewModel @AssistedInject constructor(
                 !isOwn -> null
                 sendState == SendState.SENDING -> OutgoingState.Sending
                 sendState == SendState.FAILED -> OutgoingState.Failed
-                seq != null && seq <= othersReadUpTo -> OutgoingState.Read
+                seq != null && seq <= receipts.readUpTo -> OutgoingState.Read
+                seq != null && seq <= receipts.deliveredUpTo -> OutgoingState.Delivered
                 else -> OutgoingState.Sent
             },
             systemEvent = systemEvent,
             failureReason = failureReason,
-            media = media.firstOrNull()
+            media = media.firstOrNull(),
+            replyTo = if (byId == null) null else replyToId?.let { id -> ReplyQuote(id, byId[id]?.toItem()) }
         )
     }
 

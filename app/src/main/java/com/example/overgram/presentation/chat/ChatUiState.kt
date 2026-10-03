@@ -18,8 +18,17 @@ data class ChatArgs(
     val title: String
 )
 
-/** [Read]: some other member has read up to this message. */
-enum class OutgoingState { Sending, Sent, Read, Failed }
+/**
+ * [Sent]: the server has it; [Delivered]: some other member's device has it; [Read]: some other
+ * member has read it.
+ */
+enum class OutgoingState { Sending, Sent, Delivered, Read, Failed }
+
+/**
+ * The message a bubble replies to. [message] is null when it isn't loaded on this device (older
+ * history): the quote then just says it's a reply.
+ */
+data class ReplyQuote(val clientMessageId: String, val message: ChatMessageItem?)
 
 /**
  * One bubble. Confirmed messages have a [serverSeq]; a message still being sent (or that
@@ -42,8 +51,18 @@ data class ChatMessageItem(
     /** Parsed SYSTEM message, rendered as a centered note instead of a bubble. */
     val systemEvent: SystemEvent? = null,
     /** IMAGE / VIDEO / FILE messages. */
-    val media: MediaAttachment? = null
-)
+    val media: MediaAttachment? = null,
+    val replyTo: ReplyQuote? = null
+) {
+    /** Only text and captions can be edited, only our own, only once sent, and not after deletion. */
+    val canEdit: Boolean
+        get() = isOutgoing && !isDeleted && serverSeq != null && type != MessageType.SYSTEM &&
+            (type == MessageType.TEXT || type == MessageType.IMAGE || type == MessageType.VIDEO)
+
+    val canDelete: Boolean get() = isOutgoing && !isDeleted
+
+    val canReply: Boolean get() = serverSeq != null && !isDeleted && type != MessageType.SYSTEM
+}
 
 /** One-off problems with attachments, for a snackbar. */
 enum class MediaNotice { TooLarge, Unreadable, NoAppToOpen, DownloadFailed }
@@ -64,6 +83,10 @@ data class ChatUiState(
     /** Senders and users mentioned by system events, by id. */
     val profiles: Map<String, UserProfile> = emptyMap(),
     val input: String = "",
+    /** The message being answered: shown above the input, sent as `replyTo`. */
+    val replyingTo: ChatMessageItem? = null,
+    /** Our message being edited: its text is in [input], Send saves the edit. */
+    val editing: ChatMessageItem? = null,
     val isLoading: Boolean = true,
     val isLoadingOlder: Boolean = false,
     val hasOlder: Boolean = false,

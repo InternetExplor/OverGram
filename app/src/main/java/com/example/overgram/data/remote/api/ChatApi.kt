@@ -8,6 +8,8 @@ import com.example.overgram.data.remote.dto.ChatMembersDto
 import com.example.overgram.data.remote.dto.ChatSettingsRequestDto
 import com.example.overgram.data.remote.dto.CreateGroupRequestDto
 import com.example.overgram.data.remote.dto.DirectChatRequestDto
+import com.example.overgram.data.remote.dto.EditMessageRequestDto
+import com.example.overgram.data.remote.dto.MessageDto
 import com.example.overgram.data.remote.dto.MessagePageDto
 import com.example.overgram.data.remote.dto.SendMessageRequestDto
 import com.example.overgram.data.remote.dto.SendMessageResultDto
@@ -104,6 +106,24 @@ interface ChatApi {
         @Path("id") chatId: String,
         @Body body: SendMessageRequestDto
     ): Response<SendMessageResultDto>
+
+    /** Sender only, within 48 h of createdAt (400 EDIT_WINDOW_EXPIRED after). Returns the edited message. */
+    @PATCH("v1/messages/{serverId}")
+    suspend fun editMessage(
+        @Path("serverId") serverId: Long,
+        @Body body: EditMessageRequestDto
+    ): Response<MessageDto>
+
+    /** Tombstone (sets deletedAt): the sender, or an OWNER/ADMIN in a group. 204. */
+    @DELETE("v1/messages/{serverId}")
+    suspend fun deleteMessage(@Path("serverId") serverId: Long): Response<Unit>
+
+    /** Delivery receipt without a socket. Max-wins and clamped, like read. */
+    @POST("v1/chats/{id}/received")
+    suspend fun markReceived(
+        @Path("id") chatId: String,
+        @Body body: SeqCursorDto
+    ): Response<Unit>
 
     /** Max-wins and clamped server-side, so it is always safe to send. */
     @POST("v1/chats/{id}/read")

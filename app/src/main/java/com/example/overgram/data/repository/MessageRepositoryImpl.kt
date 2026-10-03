@@ -3,6 +3,7 @@ package com.example.overgram.data.repository
 import com.example.overgram.data.local.db.ChatDao
 import com.example.overgram.data.local.db.MessageDao
 import com.example.overgram.data.local.db.MessageEntity
+import com.example.overgram.data.local.db.ReceiptDao
 import com.example.overgram.data.local.prefs.TokenPreferences
 import com.example.overgram.data.mapper.parseMedia
 import com.example.overgram.data.mapper.toDomain
@@ -18,12 +19,14 @@ import com.example.overgram.data.realtime.RealtimeClient
 import com.example.overgram.data.realtime.SendResult
 import com.example.overgram.data.remote.ApiCaller
 import com.example.overgram.data.remote.api.ChatApi
+import com.example.overgram.data.remote.dto.EditMessageRequestDto
 import com.example.overgram.data.remote.dto.MessageDto
 import com.example.overgram.data.remote.dto.SendMessageRequestDto
 import com.example.overgram.data.remote.dto.SeqCursorDto
 import com.example.overgram.data.remote.mapNotNull
 import com.example.overgram.domain.model.AuthError
 import com.example.overgram.domain.model.AuthOutcome
+import com.example.overgram.domain.model.ChatReceipts
 import com.example.overgram.domain.model.ConnectionState
 import com.example.overgram.domain.model.MediaAttachment
 import com.example.overgram.domain.model.MediaKind
@@ -43,6 +46,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -59,6 +63,7 @@ class MessageRepositoryImpl @Inject constructor(
     private val api: ChatApi,
     private val apiCaller: ApiCaller,
     private val messageDao: MessageDao,
+    private val receiptDao: ReceiptDao,
     private val chatDao: ChatDao,
     private val realtime: RealtimeClient,
     private val tokenPreferences: TokenPreferences,
@@ -108,10 +113,16 @@ class MessageRepositoryImpl @Inject constructor(
 
     private fun MessageDto.toEntityOrNull(chatId: String): MessageEntity? = toDomain(gson)?.toEntity(chatId, gson)
 
-    override suspend fun sendText(chatId: String, text: String): String =
-        enqueue(chatId, MessageType.TEXT, text, media = null)
+    override suspend fun sendText(chatId: String, text: String, replyTo: String?): String =
+        enqueue(chatId, MessageType.TEXT, text, media = null, replyTo = replyTo)
 
-    override suspend fun sendMedia(chatId: String, uri: String, caption: String?, asFile: Boolean): MediaSendResult {
+    override suspend fun sendMedia(
+        chatId: String,
+        uri: String,
+        caption: String?,
+        asFile: Boolean,
+        replyTo: String?
+    ): MediaSendResult {
         val prepared = when (val result = preparer.prepare(uri, asFile)) {
             is PrepareResult.Ready -> result.media
             PrepareResult.TooLarge -> return MediaSendResult.TooLarge
@@ -134,10 +145,16 @@ class MessageRepositoryImpl @Inject constructor(
         }
         // Relay keeps no file names: a document's body is its name (captions are for photos/videos).
         val body = if (prepared.kind == MediaKind.FILE) prepared.fileName else caption
-        return MediaSendResult.Queued(enqueue(chatId, type, body, attachment))
+        return MediaSendResult.Queued(enqueue(chatId, type, body, attachment, replyTo))
     }
 
-    private suspend fun enqueue(chatId: String, type: MessageType, body: String?, media: MediaAttachment?): String {
+    private suspend fun enqueue(
+        chatId: String,
+        type: MessageType,
+        body: String?,
+        media: MediaAttachment?,
+        replyTo: String?
+    ): String {
         val entity = MessageEntity(
             clientMessageId = UUID.randomUUID().toString(),
             chatId = chatId,
@@ -150,7 +167,8 @@ class MessageRepositoryImpl @Inject constructor(
             isEdited = false,
             isDeleted = false,
             sendState = SendState.SENDING.name,
-            media = listOfNotNull(media).toMediaJson(gson)
+            media = listOfNotNull(media).toMediaJson(gson),
+            replyTo = replyTo
         )
         messageDao.upsert(entity)
         scope.launch { flushOutbox() }
@@ -164,6 +182,38 @@ class MessageRepositoryImpl @Inject constructor(
         parseMedia(gson, message.media).forEach { mediaStore.discard(it.localPath) }
         _uploadProgress.update { it - clientMessageId }
     }
+
+    override suspend fun editMessage(clientMessageId: String, text: String): AuthOutcome<Unit> {
+        val serverId = messageDao.get(clientMessageId)?.serverId
+            ?: return AuthOutcome.Failure(AuthError.Validation(null))
+        return apiCaller.call { api.editMessage(serverId, EditMessageRequestDto(text)) }.mapNotNull { dto ->
+            // The server's copy, so the text is exactly what everyone else sees.
+            messageDao.applyEdit(serverId, dto?.body ?: text)
+        }
+    }
+
+    override suspend fun deleteMessage(clientMessageId: String): AuthOutcome<Unit> {
+        val message = messageDao.get(clientMessageId) ?: return AuthOutcome.Success(Unit)
+        val serverId = message.serverId
+        if (serverId == null) {
+            cancelSending(clientMessageId)
+            return AuthOutcome.Success(Unit)
+        }
+        return apiCaller.call { api.deleteMessage(serverId) }.mapNotNull {
+            messageDao.applyDelete(serverId)
+        }
+    }
+
+    override suspend fun markDelivered(chatId: String, upToSeq: Long) {
+        if (!realtime.sendReceived(chatId, upToSeq)) {
+            apiCaller.call { api.markReceived(chatId, SeqCursorDto(upToSeq)) }
+        }
+    }
+
+    override fun observeReceipts(chatId: String): Flow<ChatReceipts> =
+        receiptDao.observe(chatId).map { row ->
+            ChatReceipts(deliveredUpTo = row?.deliveredUpTo ?: 0L, readUpTo = row?.readUpTo ?: 0L)
+        }.distinctUntilChanged()
 
     override suspend fun retry(clientMessageId: String) {
         messageDao.setSendState(clientMessageId, SendState.SENDING.name, reason = null)
@@ -229,7 +279,10 @@ class MessageRepositoryImpl @Inject constructor(
                 is Upload.Stopped -> return upload.delivery
             }
         }
-        when (val result = realtime.sendMessage(message.chatId, message.clientMessageId, type, message.body, mediaIds)) {
+        val socketResult = realtime.sendMessage(
+            message.chatId, message.clientMessageId, type, message.body, mediaIds, message.replyTo
+        )
+        when (val result = socketResult) {
             is SendResult.Acked -> return Delivery.Sent(result.sent)
             is SendResult.Nacked -> if (!result.retryable) return Delivery.Refused(result.message)
             null -> Unit
@@ -237,7 +290,7 @@ class MessageRepositoryImpl @Inject constructor(
         val outcome = apiCaller.call {
             api.sendMessage(
                 message.chatId,
-                SendMessageRequestDto(message.clientMessageId, type.name, message.body, mediaIds)
+                SendMessageRequestDto(message.clientMessageId, type.name, message.body, mediaIds, message.replyTo)
             )
         }.mapNotNull { body ->
             SentMessage(

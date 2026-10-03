@@ -134,3 +134,38 @@ interface UserDao {
     @Query("UPDATE users SET isOnline = :isOnline, lastSeenAt = :lastSeenAt WHERE id = :userId")
     suspend fun updatePresence(userId: String, isOnline: Boolean, lastSeenAt: Long?)
 }
+
+@Dao
+interface ReceiptDao {
+
+    @Query("SELECT * FROM receipts WHERE chatId = :chatId")
+    fun observe(chatId: String): Flow<ReceiptEntity?>
+
+    @Query("INSERT OR IGNORE INTO receipts (chatId, deliveredUpTo, readUpTo) VALUES (:chatId, 0, 0)")
+    suspend fun ensure(chatId: String)
+
+    /** Max-wins, like the server: a late or replayed receipt never moves a cursor back. */
+    @Query("UPDATE receipts SET deliveredUpTo = MAX(deliveredUpTo, :upToSeq) WHERE chatId = :chatId")
+    suspend fun raiseDelivered(chatId: String, upToSeq: Long)
+
+    /** Reading implies delivery. */
+    @Query(
+        """
+        UPDATE receipts SET readUpTo = MAX(readUpTo, :upToSeq), deliveredUpTo = MAX(deliveredUpTo, :upToSeq)
+        WHERE chatId = :chatId
+        """
+    )
+    suspend fun raiseRead(chatId: String, upToSeq: Long)
+
+    @Transaction
+    suspend fun delivered(chatId: String, upToSeq: Long) {
+        ensure(chatId)
+        raiseDelivered(chatId, upToSeq)
+    }
+
+    @Transaction
+    suspend fun read(chatId: String, upToSeq: Long) {
+        ensure(chatId)
+        raiseRead(chatId, upToSeq)
+    }
+}

@@ -262,4 +262,16 @@
     <string name="media_download">Скачать</string>
     <string name="media_progress">%1$s из %2$s</string>
     <string name="media_viewer_back">Назад</string>
+
+    <!-- Действия с сообщением -->
+    <string name="message_status_delivered">Доставлено</string>
+    <string name="message_action_reply">Ответить</string>
+    <string name="message_action_copy">Копировать</string>
+    <string name="message_action_edit">Изменить</string>
+    <string name="message_action_delete">Удалить</string>
+    <string name="message_copied">Скопировано</string>
+    <string name="message_editing">Редактирование</string>
+    <string name="message_reply_unavailable">Сообщение</string>
+    <string name="message_delete_title">Удалить сообщение?</string>
+    <string name="message_delete_text">Оно удалится у всех участников чата.</string>
 </resources>

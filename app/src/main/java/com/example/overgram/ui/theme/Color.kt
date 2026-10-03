@@ -107,3 +107,37 @@ val OverGramDarkColorScheme = darkColorScheme(
     error = ErrorRed,
     onError = OnErrorRed
 )
+
+// ---- Per-person colors (Telegram picks them by user id) ----
+
+/** Avatar gradients, top to bottom: red, orange, violet, green, cyan, blue, pink. */
+val AvatarGradients = listOf(
+    Color(0xFFFF845E) to Color(0xFFD45246),
+    Color(0xFFFEBB5B) to Color(0xFFF68136),
+    Color(0xFFB694F9) to Color(0xFF6C61DF),
+    Color(0xFF9AD164) to Color(0xFF46BA43),
+    Color(0xFF53EDD6) to Color(0xFF28C9B7),
+    Color(0xFF5CAFFA) to Color(0xFF408ACF),
+    Color(0xFFFF8AAC) to Color(0xFFD95574)
+)
+
+/** Sender names (and their quotes) in group chats, bright enough for the dark incoming bubble. */
+val SenderNameColors = listOf(
+    Color(0xFFFF8E86), Color(0xFFFFA357), Color(0xFFB18FFF), Color(0xFF4FD660),
+    Color(0xFF45E8D1), Color(0xFF7AC8FF), Color(0xFFFF7FD5)
+)
+
+// ---- Media in bubbles ----
+
+/** Behind a photo/video while it loads (or if it can't). */
+val MediaPlaceholder = Color(0xFF17212B)
+
+/** Pills and round buttons drawn over a photo/video (time, duration, play, progress). */
+val MediaOverlay = Color(0x8C000000)
+
+/** The round file icon on our own (blue) bubble; incoming uses [Accent]. */
+val OutgoingFileIcon = Color(0xFF5B8DC4)
+
+/** Attach menu buttons (`chat_attachGalleryBackground`, `chat_attachFileBackground`). */
+val AttachGallery = Color(0xFF4C9CF8)
+val AttachFile = Color(0xFF3FB8E8)

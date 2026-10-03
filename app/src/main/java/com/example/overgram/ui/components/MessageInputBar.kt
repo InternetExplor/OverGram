@@ -2,14 +2,20 @@ package com.example.overgram.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.outlined.Keyboard
@@ -28,6 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -45,6 +54,16 @@ import com.example.overgram.ui.theme.SendBlue
 import com.example.overgram.ui.theme.TextPrimary
 
 /**
+ * What the next Send does differently, shown as a strip above the field: answer [quote]'s message
+ * ([icon] = reply arrow) or save an edit of it ([icon] = pencil). ✕ calls [onDismiss].
+ */
+data class InputContext(
+    val icon: ImageVector,
+    val quote: QuoteContent,
+    val onDismiss: () -> Unit
+)
+
+/**
  * Telegram's message panel: a flat strip (`chat_messagePanelBackground`) with the emoji button on
  * the left, a borderless field, the attach clip and a plain send arrow on the right — blue when
  * there's something to send, grey otherwise.
@@ -54,6 +73,8 @@ import com.example.overgram.ui.theme.TextPrimary
  * @param isEmojiPanelOpen Shows [EmojiPanel] under the bar, in place of the keyboard.
  * @param onEmojiSelected Called with the emoji tapped in the panel.
  * @param onInputFocused Called when the field gains focus, e.g. to close the panel.
+ * @param context The reply / edit strip; null for a plain new message.
+ * @param focusRequester Lets the screen focus the field (e.g. when Reply is chosen).
  */
 @Composable
 fun MessageInputBar(
@@ -66,12 +87,33 @@ fun MessageInputBar(
     isEmojiPanelOpen: Boolean = false,
     onEmojiSelected: (String) -> Unit = {},
     onInputFocused: () -> Unit = {},
-    placeholderText: String = ""
+    placeholderText: String = "",
+    context: InputContext? = null,
+    focusRequester: FocusRequester? = null
 ) {
     val canSend = value.isNotBlank()
     Surface(modifier = modifier.fillMaxWidth(), color = InputPanel) {
         Column(modifier = Modifier.navigationBarsPadding()) {
             HorizontalDivider(thickness = 0.5.dp, color = DividerColor)
+            if (context != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, top = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(context.icon, contentDescription = null, tint = Accent, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(12.dp))
+                    MessageQuote(quote = context.quote, modifier = Modifier.weight(1f))
+                    IconButton(onClick = context.onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.action_cancel),
+                            tint = InputPanelIcon
+                        )
+                    }
+                }
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -96,6 +138,7 @@ fun MessageInputBar(
                     onValueChange = onValueChange,
                     modifier = Modifier
                         .weight(1f)
+                        .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                         .onFocusChanged { if (it.isFocused) onInputFocused() },
                     placeholder = {
                         Text(
@@ -161,6 +204,43 @@ fun MessageInputBarPreview() {
             onSendClick = {},
             onEmojiClick = {},
             placeholderText = "Message"
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MessageInputBarReplyPreview() {
+    OverGramTheme {
+        MessageInputBar(
+            value = "",
+            onValueChange = {},
+            onSendClick = {},
+            onAttachClick = {},
+            placeholderText = "Message",
+            context = InputContext(
+                icon = Icons.AutoMirrored.Filled.Reply,
+                quote = QuoteContent("Ada Lovelace", "Может встретимся на выходных?"),
+                onDismiss = {}
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MessageInputBarEditPreview() {
+    OverGramTheme {
+        MessageInputBar(
+            value = "Давай в субботу",
+            onValueChange = {},
+            onSendClick = {},
+            placeholderText = "Message",
+            context = InputContext(
+                icon = Icons.Default.Edit,
+                quote = QuoteContent("Редактирование", "Давай в субботу"),
+                onDismiss = {}
+            )
         )
     }
 }

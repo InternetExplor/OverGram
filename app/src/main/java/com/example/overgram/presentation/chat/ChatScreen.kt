@@ -1,5 +1,6 @@
 package com.example.overgram.presentation.chat
 
+import android.content.ClipData
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
@@ -46,12 +50,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -75,7 +83,6 @@ import com.example.overgram.domain.model.MessageType
 import com.example.overgram.domain.model.SystemEvent
 import com.example.overgram.domain.model.SystemEventKind
 import com.example.overgram.domain.model.UserProfile
-import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.auth.PhoneEntryScreen
 import com.example.overgram.presentation.auth.authErrorMessage
 import com.example.overgram.presentation.chatlist.connectionStatusText
@@ -85,29 +92,36 @@ import com.example.overgram.presentation.chatlist.isSameDay
 import com.example.overgram.presentation.chatlist.joinNames
 import com.example.overgram.presentation.chatlist.presenceText
 import com.example.overgram.presentation.chatlist.systemEventText
+import com.example.overgram.presentation.common.mediaUrl
 import com.example.overgram.presentation.groupinfo.GroupInfoScreen
 import com.example.overgram.presentation.media.PhotoViewerScreen
 import com.example.overgram.presentation.media.VideoPlayerScreen
 import com.example.overgram.ui.components.Avatar
 import com.example.overgram.ui.components.BubbleStatus
 import com.example.overgram.ui.components.ChatBubble
+import com.example.overgram.ui.components.InputContext
 import com.example.overgram.ui.components.MessageInputBar
 import com.example.overgram.ui.components.OverGramTopBar
-import com.example.overgram.ui.theme.ServiceBackground
-import com.example.overgram.ui.theme.ChatWallpaper
-import com.example.overgram.ui.theme.BackgroundDark
-import com.example.overgram.ui.theme.DividerColor
-import com.example.overgram.ui.theme.Dimens
-import com.example.overgram.ui.theme.ErrorRed
-import com.example.overgram.ui.theme.OverGramTheme
+import com.example.overgram.ui.components.QuoteContent
 import com.example.overgram.ui.theme.Accent
+import com.example.overgram.ui.theme.AccentBright
+import com.example.overgram.ui.theme.BackgroundDark
+import com.example.overgram.ui.theme.ChatWallpaper
+import com.example.overgram.ui.theme.Dimens
+import com.example.overgram.ui.theme.DividerColor
+import com.example.overgram.ui.theme.ErrorRed
+import com.example.overgram.ui.theme.OutgoingCheck
+import com.example.overgram.ui.theme.OverGramTheme
+import com.example.overgram.ui.theme.ServiceBackground
+import com.example.overgram.ui.theme.SenderNameColors
 import com.example.overgram.ui.theme.SurfaceDark
 import com.example.overgram.ui.theme.SurfaceElevatedDark
 import com.example.overgram.ui.theme.TextPrimary
 import com.example.overgram.ui.theme.TextSecondary
-import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.Calendar
 import kotlin.math.abs
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 /** One screen for both DIRECT and GROUP chats; groups add sender names, system notes and admin actions. */
 data class ChatScreen(
@@ -164,7 +178,11 @@ data class ChatScreen(
                     )
                 },
                 onMediaNotice = viewModel::showMediaNotice,
-                onMediaNoticeShown = viewModel::onMediaNoticeShown
+                onMediaNoticeShown = viewModel::onMediaNoticeShown,
+                onReply = viewModel::startReply,
+                onEdit = viewModel::startEdit,
+                onDelete = viewModel::delete,
+                onCancelComposeMode = viewModel::cancelComposeMode
             )
         )
 
@@ -197,7 +215,15 @@ data class ChatActions(
     /** A photo or video tapped: open it full screen. */
     val onOpenMedia: (MediaAttachment) -> Unit = {},
     val onMediaNotice: (MediaNotice) -> Unit = {},
-    val onMediaNoticeShown: () -> Unit = {}
+    val onMediaNoticeShown: () -> Unit = {},
+    /** Long-press menu → Reply: the next message answers this one. */
+    val onReply: (ChatMessageItem) -> Unit = {},
+    /** Long-press menu → Edit (our own messages). */
+    val onEdit: (ChatMessageItem) -> Unit = {},
+    /** Long-press menu → Delete, after confirmation. */
+    val onDelete: (ChatMessageItem) -> Unit = {},
+    /** ✕ on the reply / edit strip, or Back while it's shown. */
+    val onCancelComposeMode: () -> Unit = {}
 )
 
 /** A row of the message list: a bubble, a system note, or a day separator. */
@@ -262,6 +288,14 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
     var isLeaveDialogOpen by rememberSaveable { mutableStateOf(false) }
     var isAttachMenuOpen by rememberSaveable { mutableStateOf(false) }
 
+    // Replying or editing: focus the field (opens the keyboard); Back leaves the mode first.
+    val inputFocus = remember { FocusRequester() }
+    val composeTarget = state.editing ?: state.replyingTo
+    LaunchedEffect(composeTarget?.clientMessageId) {
+        if (composeTarget != null) runCatching { inputFocus.requestFocus() }
+    }
+    BackHandler(enabled = composeTarget != null && !isEmojiPanelOpen) { actions.onCancelComposeMode() }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = ChatWallpaper,
@@ -314,7 +348,21 @@ fun ChatContent(state: ChatUiState, actions: ChatActions) {
                 isEmojiPanelOpen = isEmojiPanelOpen,
                 onEmojiSelected = { actions.onInputChange(state.input + it) },
                 onInputFocused = { isEmojiPanelOpen = false },
-                placeholderText = stringResource(R.string.chat_input_placeholder)
+                placeholderText = stringResource(R.string.chat_input_placeholder),
+                context = when {
+                    state.editing != null -> InputContext(
+                        icon = Icons.Default.Edit,
+                        quote = QuoteContent(stringResource(R.string.message_editing), messageText(state.editing), Accent),
+                        onDismiss = actions.onCancelComposeMode
+                    )
+                    state.replyingTo != null -> InputContext(
+                        icon = Icons.AutoMirrored.Filled.Reply,
+                        quote = quoteOf(state.replyingTo, state).copy(color = Accent),
+                        onDismiss = actions.onCancelComposeMode
+                    )
+                    else -> null
+                },
+                focusRequester = inputFocus
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -468,6 +516,7 @@ private fun ChatMenu(state: ChatUiState, actions: ChatActions, onLeave: () -> Un
 private fun MessageList(state: ChatUiState, actions: ChatActions) {
     val listState = rememberLazyListState()
     val rows = remember(state.messages, state.isGroup) { buildRows(state.messages, state.isGroup) }
+    val scope = rememberCoroutineScope()
 
     LoadOlderWhenNearTop(listState, actions.onLoadOlder)
     StickToNewest(listState, newest = state.messages.firstOrNull())
@@ -486,8 +535,16 @@ private fun MessageList(state: ChatUiState, actions: ChatActions) {
                         state.profiles[row.item.senderId]?.displayName
                             ?: stringResource(R.string.system_someone)
                     } else null,
+                    quote = row.item.replyTo?.let { reply ->
+                        quoteOf(reply.message, state, onOutgoingBubble = row.item.isOutgoing)
+                    },
                     uploadProgress = state.uploadProgress[row.item.clientMessageId],
-                    actions = actions
+                    actions = actions,
+                    onQuoteClick = { id ->
+                        // Jump to the quoted message if it's loaded.
+                        val index = rows.indexOfFirst { it.key == id }
+                        if (index >= 0) scope.launch { listState.animateScrollToItem(index) }
+                    }
                 )
                 is ChatRow.System -> SystemNote(
                     text = row.item.systemEvent?.let { event ->
@@ -536,44 +593,81 @@ private fun StickToNewest(listState: LazyListState, newest: ChatMessageItem?) {
     }
 }
 
+/**
+ * One message: its bubble (text or media), the quote of what it answers, and — on long press —
+ * Telegram's message menu: Reply, Copy, Edit and Delete (the last two for our own messages).
+ */
 @Composable
 private fun MessageRow(
     item: ChatMessageItem,
     senderName: String?,
+    quote: QuoteContent?,
     uploadProgress: Float?,
-    actions: ChatActions
+    actions: ChatActions,
+    onQuoteClick: (String) -> Unit
 ) {
     val failed = item.outgoingState == OutgoingState.Failed
     val status = when (item.outgoingState) {
         OutgoingState.Sending -> BubbleStatus.Sending
         OutgoingState.Failed -> BubbleStatus.Failed
+        OutgoingState.Delivered -> BubbleStatus.Delivered
         OutgoingState.Read -> BubbleStatus.Read
         OutgoingState.Sent, null -> BubbleStatus.Sent
     }
+    val copyText = item.body?.takeIf { it.isNotBlank() && !item.isDeleted && item.type != MessageType.FILE }
+    var isMenuOpen by remember { mutableStateOf(false) }
+    var isDeleteDialogOpen by remember { mutableStateOf(false) }
+    val onLongClick = if (item.canReply || item.canDelete || copyText != null) ({ isMenuOpen = true }) else null
+    val onReplyClick = item.replyTo?.let { reply -> { onQuoteClick(reply.clientMessageId) } }
+
     Column(horizontalAlignment = Alignment.End, modifier = Modifier.fillMaxWidth()) {
-        val media = item.media
-        if (media != null && !item.isDeleted) {
-            MediaMessageBubble(
-                item = item,
-                media = media,
-                senderName = senderName,
-                senderColor = senderColor(item.senderId),
-                status = status,
-                uploadProgress = uploadProgress,
-                actions = actions
-            )
-        } else {
-            ChatBubble(
-                message = messageText(item),
-                timestamp = formatClock(item.createdAt),
-                isSent = item.isOutgoing,
-                status = status,
-                isEdited = item.isEdited && !item.isDeleted,
-                isPlaceholder = item.isDeleted,
-                senderName = senderName,
-                senderColor = senderColor(item.senderId),
-                onClick = if (failed) ({ actions.onRetryMessage(item.clientMessageId) }) else null
-            )
+        Box(Modifier.fillMaxWidth()) {
+            val media = item.media
+            if (media != null && !item.isDeleted) {
+                MediaMessageBubble(
+                    item = item,
+                    media = media,
+                    senderName = senderName,
+                    senderColor = senderColor(item.senderId),
+                    status = status,
+                    uploadProgress = uploadProgress,
+                    actions = actions,
+                    reply = quote,
+                    onReplyClick = onReplyClick,
+                    onLongClick = onLongClick
+                )
+            } else {
+                ChatBubble(
+                    message = messageText(item),
+                    timestamp = formatClock(item.createdAt),
+                    isSent = item.isOutgoing,
+                    status = status,
+                    isEdited = item.isEdited && !item.isDeleted,
+                    isPlaceholder = item.isDeleted,
+                    senderName = senderName,
+                    senderColor = senderColor(item.senderId),
+                    reply = quote.takeIf { !item.isDeleted },
+                    onReplyClick = onReplyClick,
+                    onClick = if (failed) ({ actions.onRetryMessage(item.clientMessageId) }) else null,
+                    onLongClick = onLongClick
+                )
+            }
+            // Anchored to the bubble's side, so the menu opens next to it.
+            Box(
+                Modifier
+                    .align(if (item.isOutgoing) Alignment.TopEnd else Alignment.TopStart)
+                    .padding(horizontal = Dimens.SpacingSm)
+            ) {
+                MessageMenu(
+                    expanded = isMenuOpen,
+                    item = item,
+                    copyText = copyText,
+                    onDismiss = { isMenuOpen = false },
+                    onReply = { actions.onReply(item) },
+                    onEdit = { actions.onEdit(item) },
+                    onDelete = { isDeleteDialogOpen = true }
+                )
+            }
         }
         if (failed) {
             Text(
@@ -582,6 +676,77 @@ private fun MessageRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = ErrorRed,
                 modifier = Modifier.padding(horizontal = Dimens.ScreenPadding)
+            )
+        }
+    }
+
+    if (isDeleteDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { isDeleteDialogOpen = false },
+            containerColor = SurfaceDark,
+            title = { Text(stringResource(R.string.message_delete_title), color = TextPrimary) },
+            text = { Text(stringResource(R.string.message_delete_text), color = TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    isDeleteDialogOpen = false
+                    actions.onDelete(item)
+                }) { Text(stringResource(R.string.message_action_delete), color = ErrorRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { isDeleteDialogOpen = false }) {
+                    Text(stringResource(R.string.action_cancel), color = TextSecondary)
+                }
+            }
+        )
+    }
+}
+
+/** Telegram's long-press menu: only the actions that apply to [item]. */
+@Composable
+private fun MessageMenu(
+    expanded: Boolean,
+    item: ChatMessageItem,
+    copyText: String?,
+    onDismiss: () -> Unit,
+    onReply: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, containerColor = SurfaceElevatedDark) {
+        fun close(action: () -> Unit): () -> Unit = {
+            onDismiss()
+            action()
+        }
+        if (item.canReply) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_action_reply), color = TextPrimary) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null, tint = TextSecondary) },
+                onClick = close(onReply)
+            )
+        }
+        if (copyText != null) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_action_copy), color = TextPrimary) },
+                leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, tint = TextSecondary) },
+                onClick = close {
+                    scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, copyText))) }
+                }
+            )
+        }
+        if (item.canEdit) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_action_edit), color = TextPrimary) },
+                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = TextSecondary) },
+                onClick = close(onEdit)
+            )
+        }
+        if (item.canDelete) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_action_delete), color = ErrorRed) },
+                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ErrorRed) },
+                onClick = close(onDelete)
             )
         }
     }
@@ -603,6 +768,33 @@ private fun messageText(item: ChatMessageItem): String {
     return if (body != null) "[$label] $body" else "[$label]"
 }
 
+/**
+ * The quote of [message] (null: not loaded on this device): its author and a line of it. On our
+ * own (blue) bubble the quote uses the light check color; elsewhere the author's name color —
+ * per person in groups, the accent in a private chat — like Telegram.
+ */
+@Composable
+private fun quoteOf(message: ChatMessageItem?, state: ChatUiState, onOutgoingBubble: Boolean = false): QuoteContent {
+    if (message == null) {
+        return QuoteContent(
+            stringResource(R.string.message_reply_unavailable),
+            "…",
+            if (onOutgoingBubble) OutgoingCheck else AccentBright
+        )
+    }
+    val author = when {
+        message.senderId == state.currentUserId -> stringResource(R.string.system_you_subject)
+        !state.isGroup -> state.peer?.displayName ?: state.title
+        else -> state.profiles[message.senderId]?.displayName ?: stringResource(R.string.system_someone)
+    }
+    val color = when {
+        onOutgoingBubble -> OutgoingCheck
+        state.isGroup -> senderColor(message.senderId)
+        else -> AccentBright
+    }
+    return QuoteContent(author, messageText(message), color)
+}
+
 @Composable
 private fun mediaNoticeMessage(notice: MediaNotice): String = stringResource(
     when (notice) {
@@ -615,13 +807,7 @@ private fun mediaNoticeMessage(notice: MediaNotice): String = stringResource(
 
 /** Stable per-user name colour, bright enough for the dark received bubble. */
 private fun senderColor(userId: String): Color =
-    SENDER_COLORS[abs(userId.hashCode()) % SENDER_COLORS.size]
-
-/** Telegram's name colors for the dark theme (red, orange, violet, green, cyan, blue, pink). */
-private val SENDER_COLORS = listOf(
-    Color(0xFFFF8E86), Color(0xFFFFA357), Color(0xFFB18FFF), Color(0xFF4FD660),
-    Color(0xFF45E8D1), Color(0xFF7AC8FF), Color(0xFFFF7FD5)
-)
+    SenderNameColors[abs(userId.hashCode()) % SenderNameColors.size]
 
 @Composable
 private fun SystemNote(text: String) = CenteredPill(text, horizontalPadding = Dimens.SpacingXl)
@@ -735,12 +921,7 @@ fun ChatContentPreview() {
                 currentUserId = "me",
                 peer = UserProfile("u1", "Даша", "dasha", null, isOnline = true, lastSeenAt = null),
                 isLoading = false,
-                messages = listOf(
-                    ChatMessageItem("4", null, "me", MessageType.TEXT, "Не дошло", now, true, outgoingState = OutgoingState.Failed),
-                    ChatMessageItem("3", null, "me", MessageType.TEXT, "Отправляю…", now, true, outgoingState = OutgoingState.Sending),
-                    ChatMessageItem("2", 2, "u1", MessageType.TEXT, "Хорошо, спасибо! 😊", now - 60_000, false, isEdited = true),
-                    ChatMessageItem("1", 1, "me", MessageType.TEXT, "Привет! Как дела?", now - 86_400_000, true, outgoingState = OutgoingState.Sent)
-                )
+                messages = previewDirectMessages(now)
             ),
             actions = ChatActions()
         )
@@ -772,6 +953,69 @@ fun GroupChatContentPreview() {
                         systemEvent = SystemEvent(SystemEventKind.GROUP_CREATED, "u1", listOf("u2", "me"), "Учеба | TUIT")
                     )
                 )
+            ),
+            actions = ChatActions()
+        )
+    }
+}
+
+/** Normal, reply, edited, deleted, sent / delivered / read, sending and failed messages. */
+private fun previewDirectMessages(now: Long): List<ChatMessageItem> {
+    val question = ChatMessageItem("1", 1, "me", MessageType.TEXT, "Привет! Как дела?", now - 86_400_000, true, outgoingState = OutgoingState.Read)
+    val answer = ChatMessageItem("2", 2, "u1", MessageType.TEXT, "Хорошо, спасибо! 😊 Встретимся в субботу?", now - 60_000, false, isEdited = true)
+    return listOf(
+        ChatMessageItem("8", null, "me", MessageType.TEXT, "Не дошло", now, true, outgoingState = OutgoingState.Failed),
+        ChatMessageItem("7", null, "me", MessageType.TEXT, "Отправляю…", now, true, outgoingState = OutgoingState.Sending),
+        ChatMessageItem("6", 6, "me", MessageType.TEXT, "Доставлено, не прочитано", now, true, outgoingState = OutgoingState.Delivered),
+        ChatMessageItem("5", 5, "me", MessageType.TEXT, "На сервере", now, true, outgoingState = OutgoingState.Sent),
+        ChatMessageItem("4", 4, "u1", MessageType.TEXT, null, now - 30_000, false, isDeleted = true),
+        ChatMessageItem(
+            "3", 3, "me", MessageType.TEXT, "Давай в субботу", now - 40_000, true,
+            outgoingState = OutgoingState.Read,
+            replyTo = ReplyQuote("2", answer)
+        ),
+        answer.copy(replyTo = ReplyQuote("1", question)),
+        question
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ChatContentReplyingPreview() {
+    val now = System.currentTimeMillis()
+    val messages = previewDirectMessages(now)
+    OverGramTheme {
+        ChatContent(
+            state = ChatUiState(
+                type = ChatType.DIRECT,
+                title = "Даша",
+                currentUserId = "me",
+                peer = UserProfile("u1", "Даша", "dasha", null, isOnline = true, lastSeenAt = null),
+                isLoading = false,
+                messages = messages,
+                replyingTo = messages.first { it.clientMessageId == "2" }
+            ),
+            actions = ChatActions()
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ChatContentEditingPreview() {
+    val now = System.currentTimeMillis()
+    val messages = previewDirectMessages(now)
+    val editing = messages.first { it.clientMessageId == "3" }
+    OverGramTheme {
+        ChatContent(
+            state = ChatUiState(
+                type = ChatType.DIRECT,
+                title = "Даша",
+                currentUserId = "me",
+                isLoading = false,
+                messages = messages,
+                editing = editing,
+                input = editing.body.orEmpty()
             ),
             actions = ChatActions()
         )

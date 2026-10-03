@@ -61,7 +61,8 @@ fun MessageDto.toDomain(gson: Gson): Message? {
         isEdited = editedAt != null,
         isDeleted = deletedAt != null,
         systemEvent = if (messageType == MessageType.SYSTEM) parseSystemEvent(gson, body) else null,
-        media = media.orEmpty().mapNotNull { it.toDomain() }
+        media = media.orEmpty().mapNotNull { it.toDomain() },
+        replyToId = replyToClientMessageId
     )
 }
 

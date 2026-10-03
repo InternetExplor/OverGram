@@ -13,9 +13,6 @@ interface RealtimeRepository {
 
     val events: SharedFlow<RealtimeEvent>
 
-    /** Read cursors seen so far for [chatId], by user id. Only grows; starts empty after app start. */
-    fun readCursors(chatId: String): Flow<Map<String, Long>>
-
     /** Connect (and keep reconnecting) while the app is in the foreground. Idempotent. */
     fun start()
 

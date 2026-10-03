@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import com.example.overgram.ui.theme.BackgroundDark
 import com.example.overgram.ui.theme.Dimens
 import com.example.overgram.ui.theme.OnlineBlue
+import com.example.overgram.ui.theme.AvatarGradients
 import com.example.overgram.ui.theme.OverGramTheme
 import com.example.overgram.ui.theme.TextPrimary
 import kotlin.math.abs
@@ -114,20 +115,6 @@ private fun getInitials(name: String): String {
     }
 }
 
-/**
- * Telegram's seven avatar gradients (top to bottom), picked by name like Telegram picks by id,
- * so a person keeps the same color everywhere.
- */
-private val AvatarGradients = listOf(
-    Color(0xFFFF845E) to Color(0xFFD45246), // red
-    Color(0xFFFEBB5B) to Color(0xFFF68136), // orange
-    Color(0xFFB694F9) to Color(0xFF6C61DF), // violet
-    Color(0xFF9AD164) to Color(0xFF46BA43), // green
-    Color(0xFF53EDD6) to Color(0xFF28C9B7), // cyan
-    Color(0xFF5CAFFA) to Color(0xFF408ACF), // blue
-    Color(0xFFFF8AAC) to Color(0xFFD95574)  // pink
-)
-
 private fun avatarBrush(name: String): Brush {
     val (top, bottom) = AvatarGradients[abs(name.hashCode()) % AvatarGradients.size]
     return Brush.verticalGradient(listOf(top, bottom))
@@ -138,7 +125,7 @@ private fun avatarBrush(name: String): Brush {
 fun AvatarPreview() {
     OverGramTheme {
         Row {
-            Avatar(name = "ÐÐ·Ð¾Ð´Ð±ÐµÐº", isOnline = true)
+            Avatar(name = "Азодбек", isOnline = true)
             Spacer(modifier = Modifier.width(8.dp))
             Avatar(name = "ChatGPT", isOnline = false)
             Spacer(modifier = Modifier.width(8.dp))

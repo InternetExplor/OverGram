@@ -6,14 +6,15 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [MessageEntity::class, ChatEntity::class, UserEntity::class],
-    version = 2,
+    entities = [MessageEntity::class, ChatEntity::class, UserEntity::class, ReceiptEntity::class],
+    version = 3,
     exportSchema = false
 )
 abstract class OverGramDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun chatDao(): ChatDao
     abstract fun userDao(): UserDao
+    abstract fun receiptDao(): ReceiptDao
 
     companion object {
         const val NAME = "overgram.db"
@@ -23,6 +24,17 @@ abstract class OverGramDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN media TEXT")
                 db.execSQL("ALTER TABLE messages ADD COLUMN uploadId TEXT")
+            }
+        }
+
+        /** Replies, and delivery/read receipts kept across restarts. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN replyTo TEXT")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS receipts (chatId TEXT NOT NULL PRIMARY KEY, " +
+                        "deliveredUpTo INTEGER NOT NULL, readUpTo INTEGER NOT NULL)"
+                )
             }
         }
     }

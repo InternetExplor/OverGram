@@ -33,7 +33,9 @@ data class MessageEntity(
     /** JSON list of [MediaJson]; null for messages without attachments. */
     val media: String? = null,
     /** Our own attachment's upload session, so an interrupted upload resumes instead of restarting. */
-    val uploadId: String? = null
+    val uploadId: String? = null,
+    /** clientMessageId of the message this one replies to. */
+    val replyTo: String? = null
 )
 
 /** One attachment as stored in [MessageEntity.media]. */
@@ -76,4 +78,12 @@ data class UserEntity(
     val avatarMediaId: String?,
     val isOnline: Boolean,
     val lastSeenAt: Long?
+)
+
+/** Furthest delivery/read receipt from the other members of a chat (see ChatReceipts). */
+@Entity(tableName = "receipts")
+data class ReceiptEntity(
+    @PrimaryKey val chatId: String,
+    val deliveredUpTo: Long,
+    val readUpTo: Long
 )

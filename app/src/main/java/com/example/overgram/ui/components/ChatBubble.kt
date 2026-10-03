@@ -1,6 +1,7 @@
 package com.example.overgram.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,10 +45,20 @@ import com.example.overgram.ui.theme.ReceivedBubbleColor
 import com.example.overgram.ui.theme.ReceivedBubbleShape
 import com.example.overgram.ui.theme.SentBubbleColor
 import com.example.overgram.ui.theme.SentBubbleShape
+import com.example.overgram.ui.theme.SenderNameColors
 import com.example.overgram.ui.theme.TextPrimary
 
-/** Delivery state of an outgoing message, shown as an icon next to the timestamp. */
-enum class BubbleStatus { Sending, Sent, Read, Failed }
+/**
+ * Delivery state of an outgoing message, shown next to the timestamp: a clock, one tick (on the
+ * server), two muted ticks (on the other side's device), two bright ticks (read), or an error.
+ */
+enum class BubbleStatus { Sending, Sent, Delivered, Read, Failed }
+
+/** Tap and long press on a bubble (the long press opens the message menu). */
+@OptIn(ExperimentalFoundationApi::class)
+internal fun Modifier.bubbleClicks(onClick: (() -> Unit)?, onLongClick: (() -> Unit)?): Modifier =
+    if (onClick == null && onLongClick == null) this
+    else combinedClickable(onClick = onClick ?: {}, onLongClick = onLongClick)
 
 internal val MetaSize = 12.sp
 
@@ -62,7 +73,10 @@ internal val MetaSize = 12.sp
  * @param isPlaceholder Renders [message] as a muted italic note (e.g. "Message deleted").
  * @param senderName Shown above the text, for incoming messages in group chats.
  * @param senderColor Color of [senderName].
+ * @param reply The message this one answers, quoted above the text.
+ * @param onReplyClick Tap on the quote, e.g. to scroll to the original.
  * @param onClick Optional click callback, e.g. to retry a failed message.
+ * @param onLongClick Opens the message menu (reply / copy / edit / delete).
  */
 @Composable
 fun ChatBubble(
@@ -75,7 +89,10 @@ fun ChatBubble(
     isPlaceholder: Boolean = false,
     senderName: String? = null,
     senderColor: Color = AccentBright,
-    onClick: (() -> Unit)? = null
+    reply: QuoteContent? = null,
+    onReplyClick: (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null
 ) {
     val metaColor = if (isSent) OutgoingMeta else IncomingMeta
     val edited = if (isEdited) stringResource(R.string.message_edited) + " " else ""
@@ -93,7 +110,7 @@ fun ChatBubble(
             color = if (isSent) SentBubbleColor else ReceivedBubbleColor,
             modifier = Modifier
                 .widthIn(max = 300.dp)
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .bubbleClicks(onClick, onLongClick)
         ) {
             Box(Modifier.padding(start = 10.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)) {
                 Column {
@@ -104,6 +121,13 @@ fun ChatBubble(
                             color = senderColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (reply != null) {
+                        MessageQuote(
+                            quote = reply,
+                            onClick = onReplyClick,
+                            modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
                         )
                     }
                     Text(
@@ -162,20 +186,22 @@ internal fun BubbleMeta(
                 imageVector = when (status) {
                     BubbleStatus.Sending -> Icons.Default.Schedule
                     BubbleStatus.Sent -> Icons.Default.Done
-                    BubbleStatus.Read -> Icons.Default.DoneAll
+                    BubbleStatus.Delivered, BubbleStatus.Read -> Icons.Default.DoneAll
                     BubbleStatus.Failed -> Icons.Default.ErrorOutline
                 },
                 contentDescription = stringResource(
                     when (status) {
                         BubbleStatus.Sending -> R.string.message_status_sending
                         BubbleStatus.Sent -> R.string.message_status_sent
+                        BubbleStatus.Delivered -> R.string.message_status_delivered
                         BubbleStatus.Read -> R.string.message_status_read
                         BubbleStatus.Failed -> R.string.message_status_failed
                     }
                 ),
                 tint = when (status) {
                     BubbleStatus.Failed -> ErrorRed
-                    BubbleStatus.Sending -> color
+                    // Delivered but not read: muted, like the time; read: the bright check color.
+                    BubbleStatus.Sending, BubbleStatus.Delivered -> color
                     else -> checkColor
                 },
                 modifier = Modifier.size(15.dp)
@@ -190,17 +216,31 @@ fun ChatBubblePreview() {
     OverGramTheme {
         Surface(color = ChatWallpaper) {
             Column(modifier = Modifier.padding(vertical = 16.dp)) {
-                ChatBubble(message = "Привет! Как дела?", timestamp = "16:45", isSent = true, status = BubbleStatus.Read)
+                // Normal, sent (one tick)
+                ChatBubble(message = "Привет! Как дела?", timestamp = "16:45", isSent = true, status = BubbleStatus.Sent)
+                // Delivered (two muted ticks) vs read (two bright ticks)
+                ChatBubble(message = "Дошло, но не прочитано", timestamp = "16:45", isSent = true, status = BubbleStatus.Delivered)
+                ChatBubble(message = "Прочитано", timestamp = "16:45", isSent = true, status = BubbleStatus.Read)
+                // A reply in a group, edited
                 ChatBubble(
-                    message = "Привет! Всё нормально, а у тебя? Давно не виделись, может встретимся на выходных?",
+                    message = "Всё нормально, а у тебя? Давно не виделись, может встретимся на выходных?",
                     timestamp = "16:46",
                     isSent = false,
                     senderName = "Ada Lovelace",
-                    senderColor = Color(0xFFB9A2F5),
+                    senderColor = SenderNameColors[2],
+                    reply = QuoteContent("Вы", "Привет! Как дела?", OutgoingCheck),
                     isEdited = true
                 )
-                ChatBubble(message = "Ок 👍", timestamp = "16:47", isSent = true, status = BubbleStatus.Sending)
-                ChatBubble(message = "Message deleted", timestamp = "16:47", isSent = false, isPlaceholder = true)
+                // Our reply to someone
+                ChatBubble(
+                    message = "Давай в субботу",
+                    timestamp = "16:47",
+                    isSent = true,
+                    status = BubbleStatus.Sending,
+                    reply = QuoteContent("Ada Lovelace", "Может встретимся на выходных?", OutgoingCheck)
+                )
+                // Deleted
+                ChatBubble(message = "Сообщение удалено", timestamp = "16:47", isSent = false, isPlaceholder = true)
                 ChatBubble(message = "Не дошло", timestamp = "16:48", isSent = true, status = BubbleStatus.Failed)
             }
         }

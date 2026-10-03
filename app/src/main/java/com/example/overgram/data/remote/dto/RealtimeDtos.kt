@@ -69,6 +69,8 @@ data class SendFrame(
     @SerializedName("messageType") val messageType: String,
     @SerializedName("body") val body: String?,
     @SerializedName("mediaIds") val mediaIds: List<String>,
+    /** clientMessageId of the message this one replies to (same chat). */
+    @SerializedName("replyTo") val replyTo: String?,
     @SerializedName("type") val type: String = "send"
 )
 
